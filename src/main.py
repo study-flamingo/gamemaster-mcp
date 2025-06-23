@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-CLI entry point for the D&D MCP Server.
+CLI entry point for the D&D MCP Server (FastMCP 2.8.0+ compatible).
 """
 
-import asyncio
-from dnd_mcp_server.main import main
+from gamemaster_mcp.main import main
 
 def cli_main():
     """Main CLI entry point."""
-    asyncio.run(main())
+    main()
 
 if __name__ == "__main__":
     cli_main()

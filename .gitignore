@@ -68,3 +68,14 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# FastMCP specific
+.fastmcp/
+fastmcp_cache/
+
+# uv
+uv.lock
+.uv_cache/
+
+# Ruff
+.ruff_cache/

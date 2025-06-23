@@ -1,36 +1,36 @@
 #!/usr/bin/env python3
 """
-Example script demonstrating D&D MCP Server functionality.
+Example script demonstrating D&D MCP Server functionality with FastMCP 2.8.0+.
 This can be used for testing the server components locally.
 """
 
 import asyncio
-from dnd_mcp_server.storage import DnDStorage
-from dnd_mcp_server.models import (
+from gamemaster_mcp.storage import DnDStorage
+from gamemaster_mcp.models import (
     Character, NPC, Location, Quest, AdventureEvent, EventType,
     CharacterClass, Race, AbilityScore
 )
 
 async def demo():
     """Demonstrate the D&D MCP Server functionality."""
-    print("🐉 D&D MCP Server Demo")
+    print("🐉 D&D MCP Server Demo (FastMCP 2.8.0+)")
     print("=" * 50)
     
     # Initialize storage
     storage = DnDStorage("demo_data")
     
     # Create a campaign
-    print("\\n📚 Creating Campaign...")
+    print("\n📚 Creating Campaign...")
     campaign = storage.create_campaign(
         name="Demo Campaign",
-        description="A demonstration campaign for the D&D MCP Server",
+        description="A demonstration campaign for the D&D MCP Server with FastMCP 2.8.0+",
         dm_name="Demo DM",
         setting="Forgotten Realms"
     )
     print(f"✅ Created campaign: {campaign.name}")
     
     # Create a character
-    print("\\n⚔️ Creating Character...")
+    print("\n⚔️ Creating Character...")
     character = Character(
         name="Gandalf the Grey",
         player_name="Demo Player",
@@ -54,20 +54,20 @@ async def demo():
     print(f"✅ Created character: {character.name} (Level {character.character_class.level} {character.race.name} {character.character_class.name})")
     
     # Create an NPC
-    print("\\n👤 Creating NPC...")
+    print("\n👤 Creating NPC...")
     npc = NPC(
         name="Elara the Innkeeper",
         description="A friendly halfling who runs the local tavern",
         race="Halfling",
         occupation="Innkeeper",
         location="Greenhill Tavern",
-        attitude="Friendly"
+        attitude="friendly"
     )
     storage.add_npc(npc)
     print(f"✅ Created NPC: {npc.name}")
     
     # Create a location
-    print("\\n🏰 Creating Location...")
+    print("\n🏰 Creating Location...")
     location = Location(
         name="Greenhill Village",
         location_type="Village",
@@ -80,7 +80,7 @@ async def demo():
     print(f"✅ Created location: {location.name}")
     
     # Create a quest
-    print("\\n📜 Creating Quest...")
+    print("\n📜 Creating Quest...")
     quest = Quest(
         title="The Missing Merchant",
         description="A local merchant has gone missing on the road to the capital",
@@ -96,7 +96,7 @@ async def demo():
     print(f"✅ Created quest: {quest.title}")
     
     # Add some events
-    print("\\n📝 Adding Adventure Events...")
+    print("\n📝 Adding Adventure Events...")
     events = [
         AdventureEvent(
             event_type=EventType.ROLEPLAY,
@@ -127,7 +127,7 @@ async def demo():
         print(f"  📖 Added {event.event_type} event: {event.title}")
     
     # Update game state
-    print("\\n🎮 Updating Game State...")
+    print("\n🎮 Updating Game State...")
     storage.update_game_state(
         current_location="Greenhill Village",
         current_session=1,
@@ -137,7 +137,7 @@ async def demo():
     print("✅ Updated game state")
     
     # Display summary
-    print("\\n" + "=" * 50)
+    print("\n" + "=" * 50)
     print("📊 Campaign Summary")
     print("=" * 50)
     
@@ -156,7 +156,10 @@ async def demo():
     events = storage.get_events(limit=5)
     print(f"Recent Events: {len(events)}")
     
-    print("\\n🎉 Demo completed! Check the 'demo_data' directory for saved files.")
+    print("\n🎉 Demo completed! Check the 'demo_data' directory for saved files.")
+    print("\n🚀 To run the FastMCP 2.8.0+ compliant server:")
+    print("   python -m gamemaster_mcp")
+    print("   or: fastmcp dev src/gamemaster_mcp/main.py:mcp")
 
 if __name__ == "__main__":
     asyncio.run(demo())

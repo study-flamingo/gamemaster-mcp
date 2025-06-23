@@ -3,18 +3,17 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dnd-mcp-server"
+name = "gamemaster-mcp"
 version = "1.0.0"
-description = "A comprehensive D&D campaign management MCP server"
+description = "A comprehensive D&D campaign management MCP server built with FastMCP 2.8.0+"
 authors = [{name = "Your Name", email = "your.email@example.com"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
-    "fastmcp>=2.8.1",
-    "pydantic>=2.11.7",
-    "pydantic-settings>=2.10.0",
-    "typing-extensions>=4.14.0",
+    "fastmcp>=2.8.0",
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -23,10 +22,11 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
 ]
 
 [project.scripts]
-dnd-mcp-server = "dnd_mcp_server.main:main"
+gamemaster-mcp = "gamemaster_mcp.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -34,7 +34,20 @@ where = ["src"]
 [tool.setuptools.package-dir]
 "" = "src"
 
-[dependency-groups]
-dev = [
-    "mcp>=1.9.4",
-]
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+
+[tool.black]
+target-version = ["py310"]
+line-length = 88
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
