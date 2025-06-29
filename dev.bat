@@ -74,7 +74,7 @@ echo ==================================
 where black >nul 2>nul
 if %errorlevel%==0 (
     echo Running black...
-    black src/ --line-length 88
+    black src/ --line-length 100
     echo ✅ Black formatting applied
 )
 where ruff >nul 2>nul

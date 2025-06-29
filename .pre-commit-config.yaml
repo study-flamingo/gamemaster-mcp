@@ -9,12 +9,12 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
 
-  - repo: https://github.com/psf/black
-    rev: 23.3.0
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.7.16
     hooks:
-      - id: black
-        language_version: python3
-        args: [--line-length=88]
+      - id: uv-lock
+      - id: uv-export
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: v0.0.270

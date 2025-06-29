@@ -87,7 +87,7 @@ format_code() {
     
     if command -v black &> /dev/null; then
         echo "Running black..."
-        black src/ --line-length 88
+        black src/ --line-length 100
         print_success "Black formatting applied"
     fi
     

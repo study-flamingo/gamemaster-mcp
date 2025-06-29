@@ -3,12 +3,10 @@ D&D MCP Server
 A comprehensive D&D campaign management server built with modern FastMCP framework.
 """
 
-import asyncio
-import json
+import logging
 import random
 import re
-from datetime import datetime
-from typing import Annotated, Dict, List, Optional, Literal
+from typing import Annotated, Literal
 
 from fastmcp import FastMCP
 from pydantic import Field
@@ -19,20 +17,25 @@ from .models import (
     AbilityScore, CharacterClass, Race, Item
 )
 
+logger = logging.getLogger("gamemaster-mcp")
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    )
+
 # Initialize storage and FastMCP server
 storage = DnDStorage()
 mcp = FastMCP(
-    name="D&D Campaign Manager",
-    dependencies=["pydantic>=2.0.0", "typing-extensions>=4.0.0"]
+    name="gamemaster-mcp"
 )
-
+logger.debug("Server initialized, registering tools")
 # Campaign Management Tools
 @mcp.tool
 def create_campaign(
     name: Annotated[str, Field(description="Campaign name")],
     description: Annotated[str, Field(description="Campaign description")],
-    dm_name: Annotated[Optional[str], Field(description="Dungeon Master name")] = None,
-    setting: Annotated[Optional[str], Field(description="Campaign setting")] = None,
+    dm_name: Annotated[str | None, Field(description="Dungeon Master name")] = None,
+    setting: Annotated[str | None, Field(description="Campaign setting")] = None,
 ) -> str:
     """Create a new D&D campaign."""
     campaign = storage.create_campaign(
@@ -101,9 +104,9 @@ def create_character(
     character_class: Annotated[str, Field(description="Character class")],
     class_level: Annotated[int, Field(description="Class level", ge=1, le=20)],
     race: Annotated[str, Field(description="Character race")],
-    player_name: Annotated[Optional[str], Field(description="Player name")] = None,
-    background: Annotated[Optional[str], Field(description="Character background")] = None,
-    alignment: Annotated[Optional[str], Field(description="Character alignment")] = None,
+    player_name: Annotated[str | None, Field(description="Player name")] = None,
+    background: Annotated[str | None, Field(description="Character background")] = None,
+    alignment: Annotated[str | None, Field(description="Character alignment")] = None,
     strength: Annotated[int, Field(description="Strength score", ge=1, le=30)] = 10,
     dexterity: Annotated[int, Field(description="Dexterity score", ge=1, le=30)] = 10,
     constitution: Annotated[int, Field(description="Constitution score", ge=1, le=30)] = 10,
@@ -172,7 +175,7 @@ Level {character.character_class.level} {character.race.name} {character.charact
 def update_character_hp(
     name: Annotated[str, Field(description="Character name")],
     current_hp: Annotated[int, Field(description="Current hit points", ge=0)],
-    max_hp: Annotated[Optional[int], Field(description="Maximum hit points", ge=1)] = None,
+    max_hp: Annotated[int | None, Field(description="Maximum hit points", ge=1)] = None,
     temp_hp: Annotated[int, Field(description="Temporary hit points", ge=0)] = 0,
 ) -> str:
     """Update character hit points."""
@@ -188,11 +191,11 @@ def update_character_hp(
 def add_item_to_character(
     character_name: Annotated[str, Field(description="Character name")],
     item_name: Annotated[str, Field(description="Item name")],
-    description: Annotated[Optional[str], Field(description="Item description")] = None,
+    description: Annotated[str | None, Field(description="Item description")] = None,
     quantity: Annotated[int, Field(description="Quantity", ge=1)] = 1,
     item_type: Annotated[Literal["weapon", "armor", "consumable", "misc"], Field(description="Item type")] = "misc",
-    weight: Annotated[Optional[float], Field(description="Item weight", ge=0)] = None,
-    value: Annotated[Optional[str], Field(description="Item value (e.g., '50 gp')")] = None,
+    weight: Annotated[float | None, Field(description="Item weight", ge=0)] = None,
+    value: Annotated[str | None, Field(description="Item value (e.g., '50 gp')")] = None,
 ) -> str:
     """Add an item to a character's inventory."""
     character = storage.get_character(character_name)
@@ -232,11 +235,11 @@ def list_characters() -> str:
 @mcp.tool
 def create_npc(
     name: Annotated[str, Field(description="NPC name")],
-    description: Annotated[Optional[str], Field(description="NPC description")] = None,
-    race: Annotated[Optional[str], Field(description="NPC race")] = None,
-    occupation: Annotated[Optional[str], Field(description="NPC occupation")] = None,
-    location: Annotated[Optional[str], Field(description="Current location")] = None,
-    attitude: Annotated[Optional[Literal["friendly", "neutral", "hostile", "unknown"]], Field(description="Attitude towards party")] = None,
+    description: Annotated[str | None, Field(description="NPC description")] = None,
+    race: Annotated[str | None, Field(description="NPC race")] = None,
+    occupation: Annotated[str | None, Field(description="NPC occupation")] = None,
+    location: Annotated[str | None, Field(description="Current location")] = None,
+    attitude: Annotated[Literal["friendly", "neutral", "hostile", "unknown"] | None, Field(description="Attitude towards party")] = None,
     notes: Annotated[str, Field(description="Additional notes")] = "",
 ) -> str:
     """Create a new NPC."""
@@ -297,9 +300,9 @@ def create_location(
     name: Annotated[str, Field(description="Location name")],
     location_type: Annotated[str, Field(description="Type of location (city, town, village, dungeon, etc.)")],
     description: Annotated[str, Field(description="Location description")],
-    population: Annotated[Optional[int], Field(description="Population (if applicable)", ge=0)] = None,
-    government: Annotated[Optional[str], Field(description="Government type")] = None,
-    notable_features: Annotated[List[str], Field(description="Notable features")] = None,
+    population: Annotated[int | None, Field(description="Population (if applicable)", ge=0)] = None,
+    government: Annotated[str | None, Field(description="Government type")] = None,
+    notable_features: Annotated[list[str] | None, Field(description="Notable features")] = None,
     notes: Annotated[str, Field(description="Additional notes")] = "",
 ) -> str:
     """Create a new location."""
@@ -360,9 +363,9 @@ def list_locations() -> str:
 def create_quest(
     title: Annotated[str, Field(description="Quest title")],
     description: Annotated[str, Field(description="Quest description")],
-    giver: Annotated[Optional[str], Field(description="Quest giver (NPC name)")] = None,
-    objectives: Annotated[List[str], Field(description="Quest objectives")] = None,
-    reward: Annotated[Optional[str], Field(description="Quest reward")] = None,
+    giver: Annotated[str | None, Field(description="Quest giver (NPC name)")] = None,
+    objectives: Annotated[list[str] | None, Field(description="Quest objectives")] = None,
+    reward: Annotated[str | None, Field(description="Quest reward")] = None,
     notes: Annotated[str, Field(description="Additional notes")] = "",
 ) -> str:
     """Create a new quest."""
@@ -381,8 +384,8 @@ def create_quest(
 @mcp.tool
 def update_quest(
     title: Annotated[str, Field(description="Quest title")],
-    status: Annotated[Optional[Literal["active", "completed", "failed", "on_hold"]], Field(description="New quest status")] = None,
-    completed_objective: Annotated[Optional[str], Field(description="Objective to mark as completed")] = None,
+    status: Annotated[Literal["active", "completed", "failed", "on_hold"] | None, Field(description="New quest status")] = None,
+    completed_objective: Annotated[str | None, Field(description="Objective to mark as completed")] = None,
 ) -> str:
     """Update quest status or complete objectives."""
     quest = storage.get_quest(title)
@@ -401,7 +404,7 @@ def update_quest(
 
 @mcp.tool
 def list_quests(
-    status: Annotated[Optional[Literal["active", "completed", "failed", "on_hold"]], Field(description="Filter by status")] = None,
+    status: Annotated[Literal["active", "completed", "failed", "on_hold"] | None, Field(description="Filter by status")] = None,
 ) -> str:
     """List quests, optionally filtered by status."""
     quests = storage.list_quests(status)
@@ -422,13 +425,13 @@ def list_quests(
 # Game State Management Tools
 @mcp.tool
 def update_game_state(
-    current_location: Annotated[Optional[str], Field(description="Current party location")] = None,
-    current_session: Annotated[Optional[int], Field(description="Current session number", ge=1)] = None,
-    current_date_in_game: Annotated[Optional[str], Field(description="Current in-game date")] = None,
-    party_level: Annotated[Optional[int], Field(description="Average party level", ge=1, le=20)] = None,
-    party_funds: Annotated[Optional[str], Field(description="Party treasure/funds")] = None,
-    in_combat: Annotated[Optional[bool], Field(description="Whether party is in combat")] = None,
-    notes: Annotated[Optional[str], Field(description="Current situation notes")] = None,
+    current_location: Annotated[str | None, Field(description="Current party location")] = None,
+    current_session: Annotated[int | None, Field(description="Current session number", ge=1)] = None,
+    current_date_in_game: Annotated[str | None, Field(description="Current in-game date")] = None,
+    party_level: Annotated[int | None, Field(description="Average party level", ge=1, le=20)] = None,
+    party_funds: Annotated[str | None, Field(description="Party treasure/funds")] = None,
+    in_combat: Annotated[bool | None, Field(description="Whether party is in combat")] = None,
+    notes: Annotated[str | None, Field(description="Current situation notes")] = None,
 ) -> str:
     """Update the current game state."""
     kwargs = {}
@@ -476,7 +479,7 @@ def get_game_state() -> str:
 # Combat Management Tools
 @mcp.tool
 def start_combat(
-    participants: Annotated[List[Dict], Field(description="Combat participants with initiative order")]
+    participants: Annotated[list[dict], Field(description="Combat participants with initiative order")]
 ) -> str:
     """Start a combat encounter."""
     # Sort by initiative (highest first)
@@ -535,11 +538,11 @@ def next_turn() -> str:
 def add_session_note(
     session_number: Annotated[int, Field(description="Session number", ge=1)],
     summary: Annotated[str, Field(description="Session summary")],
-    title: Annotated[Optional[str], Field(description="Session title")] = None,
-    events: Annotated[List[str], Field(description="Key events that occurred")] = None,
-    characters_present: Annotated[List[str], Field(description="Characters present in session")] = None,
-    experience_gained: Annotated[Optional[int], Field(description="Experience points gained", ge=0)] = None,
-    treasure_found: Annotated[List[str], Field(description="Treasure or items found")] = None,
+    title: Annotated[str | None, Field(description="Session title")] = None,
+    events: Annotated[list[str] | None, Field(description="Key events that occurred")] = None,
+    characters_present: Annotated[list[str] | None, Field(description="Characters present in session")] = None,
+    experience_gained: Annotated[int | None, Field(description="Experience points gained", ge=0)] = None,
+    treasure_found: Annotated[list[str] | None, Field(description="Treasure or items found")] = None,
     notes: Annotated[str, Field(description="Additional notes")] = "",
 ) -> str:
     """Add notes for a game session."""
@@ -580,11 +583,11 @@ def add_event(
     event_type: Annotated[Literal["combat", "roleplay", "exploration", "quest", "character", "world", "session"], Field(description="Type of event")],
     title: Annotated[str, Field(description="Event title")],
     description: Annotated[str, Field(description="Event description")],
-    session_number: Annotated[Optional[int], Field(description="Session number", ge=1)] = None,
-    characters_involved: Annotated[List[str], Field(description="Characters involved in the event")] = None,
-    location: Annotated[Optional[str], Field(description="Location where event occurred")] = None,
+    session_number: Annotated[int | None, Field(description="Session number", ge=1)] = None,
+    characters_involved: Annotated[list[str] | None, Field(description="Characters involved in the event")] = None,
+    location: Annotated[str | None, Field(description="Location where event occurred")] = None,
     importance: Annotated[int, Field(description="Event importance (1-5)", ge=1, le=5)] = 3,
-    tags: Annotated[List[str], Field(description="Tags for categorizing the event")] = None,
+    tags: Annotated[list[str] | None, Field(description="Tags for categorizing the event")] = None,
 ) -> str:
     """Add an event to the adventure log."""
     event = AdventureEvent(
@@ -603,9 +606,9 @@ def add_event(
 
 @mcp.tool
 def get_events(
-    limit: Annotated[Optional[int], Field(description="Maximum number of events to return", ge=1)] = None,
-    event_type: Annotated[Optional[Literal["combat", "roleplay", "exploration", "quest", "character", "world", "session"]], Field(description="Filter by event type")] = None,
-    search: Annotated[Optional[str], Field(description="Search events by title/description")] = None,
+    limit: Annotated[int | None, Field(description="Maximum number of events to return", ge=1)] = None,
+    event_type: Annotated[Literal["combat", "roleplay", "exploration", "quest", "character", "world", "session"] | None, Field(description="Filter by event type")] = None,
+    search: Annotated[str | None, Field(description="Search events by title/description")] = None,
 ) -> str:
     """Get events from the adventure log."""
     if search:
@@ -704,6 +707,8 @@ Base Encounter XP: {encounter_xp}
 Party Size Multiplier: {multiplier}x
 Adjusted XP: {adjusted_xp}
 **XP per Player: {xp_per_player}**"""
+
+logger.debug("All tools successfully registered. Server started! 🎲")
 
 # Main entry point for FastMCP 2.8.0+
 def main() -> None:
