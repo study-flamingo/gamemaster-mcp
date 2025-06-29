@@ -8,8 +8,10 @@ from enum import Enum
 from typing import Any, Annotated
 from shortuuid import random
 from pydantic import BaseModel, Field
+from logging import Handler, LogRecord
 
 from .logutils import logger
+
 
 class GameStats(BaseModel):
     """Statistics and metadata about the current campaign, and about the MCP server itself across all campaigns."""
@@ -65,13 +67,17 @@ class GameStats(BaseModel):
         # TODO: Implement me
         return None
 
+    def _load_stats(self, stats: dict[str, Any]) -> None:
+        # TODO: Implement me
+        return None
+
     def inc(self, field: str, inc: int = 1) -> None:
         """Increment a counter.
 
         Args:
             field (str): The name of the counter to increment. Can be one of:
 
-            inc (int): The amount to increment the counter by.
+            inc (int = 1): The amount to increment the counter by. Defaults to 1.
 
         **Field** can be any of the following:
             tool_calls
@@ -120,8 +126,33 @@ class GameStats(BaseModel):
         try:
             setattr(self, field, getattr(self, field) + inc)
             self._save_stats()
-        except:
-            logger.error(f"❌ Error incrementing {field} in GameStats")
+        except Exception as e:
+            logger.error(f"❌ Error incrementing {field} in GameStats: {e}")
+
+class GameStatHandler(Handler):
+    """Connects the logging module to the GameStats object."""
+    def __init__(self, gamestats: GameStats, func) -> None:
+        super().__init__()
+        self.gamestats = gamestats
+        self.func = func  # Store the user-specified function
+
+    def emit(self, record):
+        try:
+            self.func(record)  # Execute the function with the log record
+        except Exception as e:
+            self.handleError(record)  # Handle errors gracefully
+
+    def inc_stat(self, stat_tracker: GameStats, record: LogRecord):
+
+        if "ERROR" in record.levelname:
+            # Increment error count stat
+            stat_tracker.inc("errors")
+
+# Load GameStats object and attach logging handler
+gamestats = GameStats()
+
+func = GameStatHandler.inc_stat
+logger.addHandler(GameStatHandler(gamestats, func))
 
 
 class AbilityScore(BaseModel):
@@ -168,7 +199,7 @@ class Spell(BaseModel):
     level: int = Field(ge=0, le=9)
     school: str
     casting_time: str
-    range: str
+    range: int = Field(default=5, description="The range of the spell, in feet")
     duration: str
     components: list[str]  # V, S, M
     description: str
@@ -403,4 +434,5 @@ __all__ = [
     "Campaign",
     "EventType",
     "AdventureEvent",
+    "GameStats"
 ]
