@@ -220,7 +220,16 @@ uv run --directory path/to/local/install/src/main.py  # From elsewhere
 
 ## 🏁 Usage
 
-### Claude Desktop Configuration
+Use this MCP server with any desktop MCP-compatible client, such as:
+- [Claude Desktop/Code](https://claude.ai/download)
+- [Cursor](https://www.cursor.com/en/downloads)
+- [HyperChat](https://github.com/BigSweetPotatoStudio/HyperChat)
+- [5ire](https://github.com/nanbingxyz/5ire)
+- [Cherry Studio](https://github.com/CherryHQ/cherry-studio)
+
+Or, browse [Awesome MCP Clients list by punkpeye](https://github.com/punkpeye/awesome-mcp-clients) for suggestions.
+
+### Example: Claude Desktop Configuration
 
 Add to your Claude Desktop MCP configuration .json file.
 
@@ -264,7 +273,7 @@ Then, add to your Claude Desktop MCP configuration:
 }
 ```
 
-### Running with uv (Recommended)
+### Running directly with uv
 
 After package is installed locally:
 
@@ -276,7 +285,7 @@ uv run -m gamemaster_mcp
 uv run --directory path/to/local/install/src/main.py
 ```
 
-### Running with Python
+### Running directly with Python
 
 ```bash
 # Run server directly
@@ -290,7 +299,7 @@ python src/main.py
 
 For optimal performance, use a system prompt that primes the LLM to act as a knowledgeable Dungeon Master's assistant. This prompt should guide the model to understand the context of D&D campaign management and leverage the provided tools effectively.
 
-### Example System Prompt
+### 📜 Example System Prompt
 
 ```markdown
 You are a master Dungeon Master (DM) or a Dungeon Master's Assistant, powered by the Gamemaster MCP server. Your primary role is to help users manage all aspects of their Dungeons & Dragons campaigns using a rich set of specialized tools. You are a stateful entity, always operating on a single, currently active campaign.
