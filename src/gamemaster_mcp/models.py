@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from enum import Enum
 from typing import Any, Annotated
+from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 
@@ -62,12 +63,15 @@ class Spell(BaseModel):
 class Character(BaseModel):
     """Complete character sheet."""
     # Basic Info
+    id: UUID = Field(default_factory=uuid4)
     name: str
     player_name: str | None = None
     character_class: CharacterClass
     race: Race
     background: str | None = None
     alignment: str | None = None
+    description: str | None = None  # A brief description of the character's appearance and demeanor.
+    bio: str | None = None  # The character's backstory, personality, and motivations.
 
     # Core Stats
     abilities: dict[str, AbilityScore] = Field(
@@ -125,8 +129,10 @@ class Character(BaseModel):
 
 class NPC(BaseModel):
     """Non-player character."""
+    id: UUID = Field(default_factory=uuid4)
     name: str
     description: str | None = None
+    bio: str | None = None  # The NPC's backstory, motivations, and secrets.
     race: str | None = None
     occupation: str | None = None
     location: str | None = None

@@ -15,15 +15,15 @@
     - [**FastMCP Tool Implementation Pattern**](#fastmcp-tool-implementation-pattern)
     - [**Advanced Parameter Types**](#advanced-parameter-types)
   - [💾 Storage Layer Guide](#-storage-layer-guide)
-      - [**Data Flow and Architecture**](#data-flow-and-architecture)
-      - [**Properties**](#properties)
-      - [**Private Methods (Internal Logic)**](#private-methods-internal-logic)
-      - [**Public Methods (Tool-Facing API)**](#public-methods-tool-facing-api)
-        - [**Campaign Management**](#campaign-management)
-        - [**Character Management**](#character-management)
-        - [**NPC, Location, and Quest Management**](#npc-location-and-quest-management)
-        - [**Game State \& Session Management**](#game-state--session-management)
-        - [**Adventure Log / Event Management**](#adventure-log--event-management)
+    - [**Data Flow and Architecture**](#data-flow-and-architecture)
+    - [**Properties**](#properties)
+    - [**Private Methods (Internal Logic)**](#private-methods-internal-logic)
+    - [**Public Methods (Tool-Facing API)**](#public-methods-tool-facing-api)
+      - [**Campaign Management**](#campaign-management)
+      - [**Character Management**](#character-management)
+      - [**NPC, Location, and Quest Management**](#npc-location-and-quest-management)
+      - [**Game State \& Session Management**](#game-state--session-management)
+      - [**Adventure Log / Event Management**](#adventure-log--event-management)
   - [📖 Data Models Guide](#-data-models-guide)
     - [**`AbilityScore`**](#abilityscore)
     - [**`CharacterClass`**](#characterclass)
@@ -60,9 +60,6 @@
   - [📝 Code Style \& Standards (Updated)](#-code-style--standards-updated)
     - [**FastMCP-Specific Conventions**](#fastmcp-specific-conventions)
     - [**Parameter Guidelines**](#parameter-guidelines)
-  - [💡 Performance Considerations](#-performance-considerations)
-    - [**FastMCP Advantages**](#fastmcp-advantages)
-    - [**Migration Benefits**](#migration-benefits)
 
 # D&D MCP Server - Development Guide (FastMCP 2.9.0+)
 
@@ -73,7 +70,7 @@
 ## 📁 Project Structure
 
 ```text
-dnd-mcp/
+gamemaster-mcp/
 ├── src/
 │   ├── gamemaster_mcp/           # Renamed for FastMCP compliance
 │   │   ├── __init__.py          # Package initialization
@@ -240,7 +237,7 @@ def advanced_example(
 
 The `DnDStorage` class, defined in [`src/gamemaster_mcp/storage.py`](src/gamemaster_mcp/storage.py:27), is the persistence layer for the D&D MCP Server. It handles all reading from and writing to the file system, ensuring that campaign data is safely stored and retrieved between sessions. It uses JSON files to store data, with Pydantic models providing validation and structure.
 
-#### **Data Flow and Architecture**
+### **Data Flow and Architecture**
 
 The storage system is designed around two primary data concepts:
 1. **Campaigns**: A single, comprehensive `Campaign` object holds the majority of the game data, including characters, NPCs, locations, quests, and the overall game state. Each campaign is stored in its own JSON file. The system keeps one campaign active in memory at a time (`_current_campaign`).
@@ -270,13 +267,13 @@ graph TD
     style C fill:#ccf,stroke:#333,stroke-width:2px
 ```
 
-#### **Properties**
+### **Properties**
 
 - **`data_dir: Path`**: The root directory where all campaign data is stored. Defaults to `dnd_data`.
 - **`_current_campaign: Campaign | None`**: An in-memory Pydantic `Campaign` object representing the currently loaded campaign. All operations on characters, quests, etc., are performed on this object before being saved.
 - **`_events: list[AdventureEvent]`**: An in-memory list of all `AdventureEvent` objects loaded from the adventure log.
 
-#### **Private Methods (Internal Logic)**
+### **Private Methods (Internal Logic)**
 
 These methods handle the direct file I/O operations.
 
@@ -287,37 +284,37 @@ These methods handle the direct file I/O operations.
 - **`_save_events()`**: Serializes the `_events` list to the `adventure_log.json` file.
 - **`_load_events()`**: On initialization, loads all events from `adventure_log.json` into the `_events` list.
 
-#### **Public Methods (Tool-Facing API)**
+### **Public Methods (Tool-Facing API)**
 
 These methods provide a clean, high-level interface for the MCP server tools to interact with the data.
 
-##### **Campaign Management**
+#### **Campaign Management**
 - **`create_campaign(...) -> Campaign`**: Creates a new `Campaign` object, sets it as the `_current_campaign`, and saves it to a new JSON file.
 - **`get_current_campaign() -> Campaign | None`**: Returns the currently loaded campaign object.
 - **`list_campaigns() -> list[str]`**: Returns a list of names of all available campaigns by scanning the `campaigns` directory.
 - **`load_campaign(name: str) -> Campaign`**: Loads a specific campaign from its JSON file into `_current_campaign`.
 - **`update_campaign(**kwargs)`**: Modifies attributes of the `_current_campaign` object and saves the changes.
 
-##### **Character Management**
+#### **Character Management**
 - **`add_character(character: Character)`**: Adds a `Character` to the current campaign's character dictionary.
 - **`get_character(name: str) -> Character | None`**: Retrieves a single character by name from the current campaign.
 - **`update_character(name: str, **kwargs)`**: Updates attributes of a specific character in the current campaign.
 - **`remove_character(name: str)`**: Deletes a character from the current campaign.
 - **`list_characters() -> list[str]`**: Lists the names of all characters in the current campaign.
 
-##### **NPC, Location, and Quest Management**
+#### **NPC, Location, and Quest Management**
 These methods follow the same CRUD (Create, Read, Update, Delete) pattern as Character Management:
 - **`add_npc(npc: NPC)`**, **`get_npc(name: str)`**, **`list_npcs()`**
 - **`add_location(location: Location)`**, **`get_location(name: str)`**, **`list_locations()`**
 - **`add_quest(quest: Quest)`**, **`get_quest(title: str)`**, **`update_quest_status(...)`**, **`list_quests(...)`**
 
-##### **Game State & Session Management**
+#### **Game State & Session Management**
 - **`update_game_state(**kwargs)`**: Modifies attributes of the `GameState` object within the current campaign.
 - **`get_game_state() -> GameState | None`**: Retrieves the `GameState` object from the current campaign.
 - **`add_session_note(session_note: SessionNote)`**: Appends a `SessionNote` to the current campaign's session list.
 - **`get_sessions() -> list[SessionNote]`**: Returns all session notes for the current campaign.
 
-##### **Adventure Log / Event Management**
+#### **Adventure Log / Event Management**
 - **`add_event(event: AdventureEvent)`**: Adds a new event to the `_events` list and saves the adventure log.
 - **`get_events(...) -> list[AdventureEvent]`**: Retrieves events, with optional filtering by type and a limit on the number of results.
 - **`search_events(query: str) -> list[AdventureEvent]`**: Searches event titles and descriptions for a given query string.
@@ -670,12 +667,14 @@ You can run the server directly from the source code without a persistent instal
 # From the root of the project directory:
 uvx . gamemaster-mcp
 ```
+
 This command tells `uvx` to treat the current directory (`.`) as a package to install, along with its dependencies, into a temporary environment, and then execute the `gamemaster-mcp` script.
 
 ### **Claude Desktop Integration**
 To integrate with the Claude Desktop app, you need to provide a command that can launch the server. Using `uvx` is a clean way to do this, as it handles the environment setup.
 
 Update your Claude `settings.json`:
+
 ```json
 {
   "mcpServers": {
@@ -692,6 +691,7 @@ Update your Claude `settings.json`:
   }
 }
 ```
+
 **Note:** Replace `/absolute/path/to/gamemaster-mcp/project` with the actual absolute path to this project on your machine.
 
 ## 📝 Code Style & Standards (Updated)
@@ -720,20 +720,3 @@ def good_tool(
 def bad_tool(name: str, level: int, notes: str = "") -> str:
     """Updates character."""
 ```
-
-## 💡 Performance Considerations
-
-### **FastMCP Advantages**
-- **Faster Development** - Automatic schema generation
-- **Better Type Safety** - Compile-time error detection
-- **Reduced Boilerplate** - No manual tool registration
-- **Enhanced DX** - Built-in development tools
-
-### **Migration Benefits**
-1. **Reduced Code** - ~70% less boilerplate code
-2. **Better Validation** - Automatic parameter validation
-3. **Improved Maintainability** - Type-safe, declarative approach
-4. **Enhanced Testing** - Tools can be tested as regular functions
-5. **Modern Standards** - Compliance with latest MCP best practices
-
-This guide provides the foundation for developing with FastMCP 2.9.0+, emphasizing the modern, type-safe, and streamlined approach to MCP server development.\

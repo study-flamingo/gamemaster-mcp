@@ -4,13 +4,34 @@ A comprehensive (Model Context Protocol (MCP))[https://www.github.com/modelconte
 
 ## ✨ Features
 
-### 🚩 Campaign Management
+### 🌍 Campaign Management
+
+The foundation of your D&D world. Each campaign contains:
+
+- **Core Metadata**: Name, description, setting, DM name
+- **Characters**: All player characters and their sheets
+- **NPCs**: Every non-player character in your world
+- **Locations**: Cities, dungeons, and points of interest
+- **Quests**: Active and completed storylines
+- **Game State**: Current session, party location, world conditions
+
+All data is automatically saved and can be shared between sessions.
 
 - Create and manage multiple campaigns
 - Switch between campaigns seamlessly
 - Track campaign metadata (name, description, DM, setting)
 
-### 📑 Character Management
+### 🧙 Character Management
+
+Complete D&D 5e character sheets with:
+
+- **Core Attributes**: Ability scores with auto-calculated modifiers
+- **Combat Stats**: HP, AC, saving throws, resistances
+- **Inventory**: Equipment with weight and value tracking
+- **Spellcasting**: Prepared spells, slots, and DCs
+- **Progression**: Level ups with automatic feature unlocks
+
+Characters evolve as you play - taking damage, gaining items, and leveling up.
 
 - Complete character sheets with D&D 5e stats
 - Ability scores with automatic modifier calculation
@@ -18,19 +39,49 @@ A comprehensive (Model Context Protocol (MCP))[https://www.github.com/modelconte
 - Inventory and equipment management
 - Spellcasting support
 
-### 🧝 NPC Management
+### 🏰 NPC Management
+
+Bring your world to life with rich NPCs featuring:
+
+- **Descriptions**: Appearance, personality, voice notes
+- **Relationships**: Connections to other characters/factions
+- **Locations**: Where they live and frequent
+- **Secrets**: Hidden motivations and knowledge
+- **Stats**: Quick reference for combat if needed
+
+NPCs can be linked to quests and locations for easy reference.
 
 - Create and track non-player characters
 - Manage relationships and locations
 - Store descriptions and notes
 
-### 🗺️ Location/World Building
+### 🌄 Location/World Building
+
+Create immersive settings with:
+
+- **Detailed Descriptions**: Sensory details and maps
+- **Notable Features**: Landmarks, secrets, hazards
+- **Connections**: Linked areas for travel routes
+- **Inhabitants**: NPCs and monsters present
+- **Lore**: Local history and legends
+
+Locations update as the party explores - adding discovered areas and changing conditions.
 
 - Create detailed locations (cities, dungeons, etc.)
 - Track populations, governments, and notable features
 - Connect locations and manage geography
 
-### ❗ Quest Management
+### 🏆 Quest Management
+
+Track story arcs and missions with:
+
+- **Objectives**: Clear steps to completion
+- **Status Tracking**: Active/Completed/Failed
+- **Givers & Rewards**: Connected NPCs and prizes
+- **Time Sensitivity**: Optional deadlines
+- **Branching Paths**: Alternate resolutions
+
+Quest progress automatically updates the Game State and Adventure Log.
 
 - Create quests with objectives and rewards
 - Track quest status and completion
@@ -38,24 +89,76 @@ A comprehensive (Model Context Protocol (MCP))[https://www.github.com/modelconte
 
 ### ⚔️ Combat Management
 
+Track and run dynamic combat encounters with:
+
+- **Initiative Order**: Automatic sorting with manual override
+- **Turn Tracking**: Current actor highlight and turn reminders
+- **Condition Management**: Status effects with duration tracking
+- **Damage/Healing**: Apply with automatic HP calculation
+- **Enemy Stats**: Quick reference for monsters/NPCs
+
+Combat data flows to:
+- Character sheets (HP, conditions)
+- Game State (current encounter)
+- Adventure Log (combat events)
+
 - Initiative tracking
 - Turn-based combat flow
 - Combat encounter planning
 
-### ⏰ Session Management
+### 📅 Session Management
+
+Organize your game sessions with:
+
+- **Session Notes**: Key events and decisions
+- **Attendance Tracking**: Which players were present
+- **XP Awards**: Track character progression
+- **Loot Distribution**: Treasure found and claimed
+- **Game Date**: Track in-world time passage
+
+Session data updates:
+- Character sheets (XP, items)
+- Game State (current session #)
+- Adventure Log (session summary)
 
 - Session notes and summaries
 - Experience and treasure tracking
 - Character attendance
 
-### 🏕️ Adventure Log
+### 📜 Adventure Log
+
+Your campaign's living history:
+
+- **Event Types**: Combat, Roleplay, Exploration, etc.
+- **Timeline View**: Chronological story progression
+- **Searchable**: Find key moments quickly
+- **Tags & Importance**: Highlight major plot points
+- **Session Linking**: Connect events to game sessions
+
+The log connects to:
+- Quests (progress updates)
+- Locations (where events occurred)
+- NPCs (who was involved)
 
 - Comprehensive event logging
 - Categorized by event type (combat, roleplay, exploration, etc.)
 - Searchable and filterable
 - Importance ratings
 
-### 🚦 Game State Tracking
+### 🎮 Game State Tracking
+
+The current snapshot of your world:
+
+- **Party Status**: Location, resources, conditions
+- **Active Quests**: Current objectives and progress
+- **World Conditions**: Weather, political climate
+- **Time Tracking**: In-game date and time
+- **Combat Status**: Current encounter details
+
+The Game State connects all other models:
+- Updates from character actions
+- Drives world simulation
+- Informs AI DM decisions
 
 - Current location and session
 - Party level and funds
@@ -75,17 +178,7 @@ A comprehensive (Model Context Protocol (MCP))[https://www.github.com/modelconte
 - Python 3.10+
 - FastMCP 2.8.0+
 
-### Install with FastMCP CLI (Recommended)
-
-```bash
-# Install FastMCP
-pip install fastmcp>=2.8.0
-
-# Install this server
-fastmcp install src/gamemaster_mcp/main.py:mcp -n "D&D Campaign Manager"
-```
-
-### Manual Installation
+### Install from GitHub with `uv`
 
 ```bash
 # Clone repository
@@ -98,33 +191,78 @@ uv venv
 # Install dependencies
 uv sync
 
-# Install to user/system with uv
-uv pip install -e .
+# Install to system with uv
+uv pip install --system -e .
 
 # Or, run directly
-uv run --directory path/to/local/install/src/main.py
+```
+
+To run directly after installed:
+
+```bash
+uv run gamemaster-mcp  # From root dir
+uv run --directory path/to/local/install/src/main.py  # From elsewhere
 ```
 
 ## 🏁 Usage
 
-### Running with FastMCP CLI (Recommended)
+### Claude Desktop Configuration
+
+Add to your Claude Desktop MCP configuration .json file.
+
+Run with uv:
+
+```json
+{
+  "mcpServers": {
+    "gamemaster-mcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "path/to/your/local/gamemaster-mcp"
+        "run",
+        "gamemaster-mcp"
+      ]
+    }
+  }
+}
+```
+
+You can also install gamemaster-mcp locally and run it as a Python module:
+
+```bash
+uv pip install --user -e .  # Install as editable package
+```
+
+Then, add to your Claude Desktop MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "gamemaster-mcp": {
+      "command": "python",
+      "args": [
+        "-m",
+        "gamemaster_mcp"
+      ]
+    }
+  }
+}
+```
+
+### Running with uv (Recommended)
+
+After package is installed locally:
 
 ```bash
 # Run as a python package
-uv run gamemaster-mcp
+uv run -m gamemaster_mcp
 
 # Alternatively:
 uv run --directory path/to/local/install/src/main.py
-
-# Or, if installed to user/system packages:
-uv run gamemaster-mcp
-
-or 
-
-python -m gamemaster_mcp
 ```
 
-### Traditional Python
+### Running with Python
 
 ```bash
 # Run server directly
@@ -134,45 +272,13 @@ python -m gamemaster_mcp
 python src/main.py
 ```
 
-### Claude Desktop Configuration
-
-Add to your Claude Desktop MCP configuration:
-
-```json
-{
-  "mcpServers": {
-    "dnd-campaign-manager": {
-      "command": "fastmcp",
-      "args": ["run", "/path/to/dnd-mcp/src/gamemaster_mcp/main.py"]
-    }
-  }
-}
-```
-
-Or with dependencies:
-
-```json
-{
-  "mcpServers": {
-    "dnd-campaign-manager": {
-      "command": "uv",
-      "args": [
-        "run",
-        "python",
-        "/path/to/dnd-mcp/src/gamemaster_mcp/main.py"
-      ]
-    }
-  }
-}
-```
-
-## 🤖 Recommended System Prompt
+## 🎛️ System Prompt Recommendation
 
 For optimal performance, use a system prompt that primes the LLM to act as a knowledgeable Dungeon Master's assistant. This prompt should guide the model to understand the context of D&D campaign management and leverage the provided tools effectively.
 
 ### Example System Prompt
 
-```text
+```markdown
 You are a master Dungeon Master (DM) or a Dungeon Master's Assistant, powered by the Gamemaster MCP server. Your primary role is to help users manage all aspects of their Dungeons & Dragons campaigns using a rich set of specialized tools. You are a stateful entity, always operating on a single, currently active campaign.
 
 **Core Principles:**
@@ -287,6 +393,50 @@ Once the campaign is underway, your focus shifts to dynamic management and narra
 - `roll_dice` - Roll dice with D&D notation (e.g., "1d20", "3d6+2")
 - `calculate_experience` - Calculate XP distribution for encounters
 
+## 💽 Data Structure
+
+The Gamemaster MCP server organizes all campaign data around a central `Campaign` model, which acts as the primary container for the entire game world. This design ensures a cohesive and interconnected data structure, allowing for easy management and interaction with various game elements.
+
+The system is built around a hierarchical data structure with the `Campaign` model at its core. All other models relate to the active campaign, as shown below:
+
+```mermaid
+graph TD
+    A[Campaign] --> B[GameState]
+    A --> C[Character]
+    A --> D[NPC]
+    A --> E[Location]
+    A --> F[Quest]
+    A --> G[CombatEncounter]
+    A --> H[SessionNote]
+    B --> I[AdventureEvent]
+    
+    C --> J[Item]
+    C --> K[Spell]
+    C --> L[AbilityScore]
+    C --> M[CharacterClass]
+    C --> N[Race]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:4px
+```
+
+Here's how the core data models in `src/gamemaster_mcp/models.py` interact:
+
+- **`Campaign`**: The foundational model. It encapsulates all campaign-specific data, including:
+    - **`characters`**: A dictionary of `Character` models, representing player characters. Each `Character` is a complex model composed of `CharacterClass`, `Race`, `AbilityScore` (for core stats), `Item` (for inventory and equipment), and `Spell` (for known spells).
+    - **`npcs`**: A dictionary of `NPC` models, representing non-player characters. NPCs can be linked to `Location` models.
+    - **`locations`**: A dictionary of `Location` models, defining places within the campaign world. Locations can list associated NPCs and connections to other locations.
+    - **`quests`**: A dictionary of `Quest` models, tracking ongoing and completed missions. Quests can reference NPCs as givers.
+    - **`encounters`**: A dictionary of `CombatEncounter` models, detailing planned or active combat scenarios. Encounters can be tied to specific locations.
+    - **`sessions`**: A list of `SessionNote` models, providing summaries and details for each game session played within the campaign.
+    - **`game_state`**: A single `GameState` model, which captures the dynamic, real-time conditions of the campaign, such as the current location, active quests, and party funds. This model is crucial for understanding the immediate context of the game.
+
+- **`GameState`**: While part of the `Campaign`, `GameState` plays a pivotal role in reflecting the current state of the world. It influences and is influenced by other models:
+    - `current_location` can point to a `Location` model.
+    - `active_quests` references `Quest` titles.
+    - Changes in `Character` status (e.g., `hit_points_current`) or `Quest` status (`active`, `completed`) directly impact the `GameState`.
+
+- **`AdventureEvent`**: This model is used to log significant occurrences throughout the campaign. While not directly nested within `Campaign` (it's stored globally), `AdventureEvent` instances often reference elements from the `Campaign`'s data, such as `characters_involved` and `location`. This provides a historical log for understanding past events and narrative progression.
+
 ## 🖥️ Development
 
 ### FastMCP Development Workflow
@@ -301,15 +451,6 @@ npx @mcpjam/inspector
 # Run tests
 pytest
 ```
-
-## ✈️ Migration from Raw MCP SDK
-
-This server has been migrated from the raw MCP SDK to FastMCP 2.8.0+ for:
-
-- **Simplified Development** - Decorator-based instead of manual tool registration
-- **Better Type Safety** - Automatic schema generation from type hints  
-- **Enhanced DX** - Built-in development tools and CLI
-- **Modern Standards** - Compliance with latest MCP best practices
 
 ## 📜 License
 

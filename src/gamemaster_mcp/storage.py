@@ -24,7 +24,7 @@ class DnDStorage:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(exist_ok=True)
 
-        # Create subdirectories
+        # Create subdirectories if necessary
         (self.data_dir / "campaigns").mkdir(exist_ok=True)
         (self.data_dir / "events").mkdir(exist_ok=True)
 
@@ -79,7 +79,7 @@ class DnDStorage:
                 data = json.load(f)
             self._current_campaign = Campaign.model_validate(data)
         except (json.JSONDecodeError, ValueError) as e:
-            print(f"Error loading campaign from {latest_file}: {e}")
+            logger.error(f"❌ Error loading campaign from {latest_file}: {e}")
 
     def _save_events(self):
         """Save adventure events to disk."""
@@ -100,7 +100,7 @@ class DnDStorage:
                 events_data = json.load(f)
             self._events = [AdventureEvent.model_validate(event) for event in events_data]
         except (json.JSONDecodeError, ValueError) as e:
-            print(f"Error loading events: {e}")
+            logger.error(f"❌ Error loading events: {e}")
 
     # Campaign Management
     def create_campaign(self, name: str, description: str, dm_name: str | None = None, setting: str | Path | None = None) -> Campaign:

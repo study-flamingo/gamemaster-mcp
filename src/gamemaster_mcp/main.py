@@ -26,25 +26,36 @@ logging.basicConfig(
     )
 
 if not load_dotenv():
-    logger.warning(".env file invalid or not found! Please see README.md for instructions. Using project root instead.")
+    logger.warning("❌ .env file invalid or not found! Please see README.md for instructions. Using project root instead.")
 
 data_path = Path(os.getenv("GAMEMASTER_STORAGE_DIR", "")).resolve()
-logger.debug(f"Data path: {data_path}")
+logger.debug(f"📂 Data path: {data_path}")
 
 
 # Initialize storage and FastMCP server
 storage = DnDStorage(data_dir=data_path)
+logger.debug("✅ Storage layer initialized")
+
 mcp = FastMCP(
     name="gamemaster-mcp"
 )
-logger.debug("Server initialized, registering tools")
-# Campaign Management Tools
+logger.debug("✅ Server initialized, registering tools")
+
+
+
+# ----------------------------------------------------------------------
+# Tools
+# ----------------------------------------------------------------------
+
+# Campaign management tools
 @mcp.tool
 def create_campaign(
     name: Annotated[str, Field(description="Campaign name")],
-    description: Annotated[str, Field(description="Campaign description")],
+    description: Annotated[str, Field(description="Brief decription of the campaign, or a tagline")],
     dm_name: Annotated[str | None, Field(description="Dungeon Master name")] = None,
-    setting: Annotated[str | Path | None, Field(description="Campaign setting - a full description of the setting of the campaign in markdown format, or the path to a file containing the same.")] = None,
+    setting: Annotated[str | Path | None, Field(description="""
+        Campaign setting - a full description of the setting of the campaign in markdown format, or the path to a `.txt` or `.md` file containing the same.
+        """)] = None,
 ) -> str:
     """Create a new D&D campaign."""
     campaign = storage.create_campaign(
@@ -86,7 +97,7 @@ def list_campaigns() -> str:
     """List all available campaigns."""
     campaigns = storage.list_campaigns()
     if not campaigns:
-        return "No campaigns found."
+        return f"❌ No campaigns found in {storage.data_dir}!"
 
     current = storage.get_current_campaign()
     current_name = current.name if current else None
@@ -104,7 +115,7 @@ def load_campaign(
 ) -> str:
     """Load a specific campaign."""
     campaign = storage.load_campaign(name)
-    return f"Loaded campaign '{campaign.name}'. Campaign is now active."
+    return f"📖 Loaded campaign: '{campaign.name}'. Campaign is now active!"
 
 # Character Management Tools
 @mcp.tool
@@ -113,7 +124,9 @@ def create_character(
     character_class: Annotated[str, Field(description="Character class")],
     class_level: Annotated[int, Field(description="Class level", ge=1, le=20)],
     race: Annotated[str, Field(description="Character race")],
-    player_name: Annotated[str | None, Field(description="Player name")] = None,
+    player_name: Annotated[str | None, Field(description="The name of the player in control of this character")] = None,
+    description: Annotated[str | None, Field(description="A brief description of the character's appearance and demeanor.")] = None,
+    bio: Annotated[str | None, Field(description="The character's backstory, personality, and motivations.")] = None,
     background: Annotated[str | None, Field(description="Character background")] = None,
     alignment: Annotated[str | None, Field(description="Character alignment")] = None,
     strength: Annotated[int, Field(description="Strength score", ge=1, le=30)] = 10,
@@ -141,7 +154,9 @@ def create_character(
         race=Race(name=race),
         background=background,
         alignment=alignment,
-        abilities=abilities
+        abilities=abilities,
+        description=description,
+        bio=bio,
     )
 
     storage.add_character(character)
@@ -156,11 +171,14 @@ def get_character(
     if not character:
         return f"Character '{name}' not found."
 
-    char_info = f"""**{character.name}**
+    char_info = f"""**{character.name}** (`{character.id}`)
 Level {character.character_class.level} {character.race.name} {character.character_class.name}
 **Player:** {character.player_name or 'N/A'}
 **Background:** {character.background or 'N/A'}
 **Alignment:** {character.alignment or 'N/A'}
+
+**Description:** {character.description or 'No description provided.'}
+**Bio:** {character.bio or 'No bio provided.'}
 
 **Ability Scores:**
 • STR: {character.abilities['strength'].score} ({character.abilities['strength'].modifier:+d})
@@ -244,7 +262,8 @@ def list_characters() -> str:
 @mcp.tool
 def create_npc(
     name: Annotated[str, Field(description="NPC name")],
-    description: Annotated[str | None, Field(description="NPC description")] = None,
+    description: Annotated[str | None, Field(description="A brief, public description of the NPC.")] = None,
+    bio: Annotated[str | None, Field(description="A detailed, private bio for the NPC, including secrets.")] = None,
     race: Annotated[str | None, Field(description="NPC race")] = None,
     occupation: Annotated[str | None, Field(description="NPC occupation")] = None,
     location: Annotated[str | None, Field(description="Current location")] = None,
@@ -255,6 +274,7 @@ def create_npc(
     npc = NPC(
         name=name,
         description=description,
+        bio=bio,
         race=race,
         occupation=occupation,
         location=location,
@@ -274,13 +294,14 @@ def get_npc(
     if not npc:
         return f"NPC '{name}' not found."
 
-    npc_info = f"""**{npc.name}**
+    npc_info = f"""**{npc.name}** (`{npc.id}`)
 **Race:** {npc.race or 'Unknown'}
 **Occupation:** {npc.occupation or 'Unknown'}
 **Location:** {npc.location or 'Unknown'}
 **Attitude:** {npc.attitude or 'Neutral'}
 
 **Description:** {npc.description or 'No description available.'}
+**Bio:** {npc.bio or 'No bio available.'}
 
 **Notes:** {npc.notes or 'No additional notes.'}
 """
@@ -717,9 +738,8 @@ Party Size Multiplier: {multiplier}x
 Adjusted XP: {adjusted_xp}
 **XP per Player: {xp_per_player}**"""
 
-logger.debug("All tools successfully registered. Server started! 🎲")
+logger.debug("✅ All tools successfully registered. Gamemaster-MCP server running! 🎲")
 
-# Main entry point for FastMCP 2.8.0+
 def main() -> None:
     """Main entry point for the D&D MCP Server."""
     mcp.run()
