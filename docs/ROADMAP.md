@@ -1,5 +1,15 @@
 # Gamemaster MCP 🐉 - Project Roadmap
 
+## 🏰 Vision Statement
+
+The Gamemaster MCP server aims to be the ultimate AI-assisted Dungeon Master for DnD 5e, providing:
+
+- **For Groups**: A comprehensive toolkit to help human DMs run campaigns more effectively
+- **For Solo Players**: A complete virtual DM experience that facilitates immersive solo play
+- **For Worldbuilders**: Powerful tools to assist in creating rich, interconnected game worlds
+
+Built on FastMCP, the server provides structured data models and intelligent tools to manage all aspects of a D&D campaign while enabling natural language interaction through MCP clients.
+
 ## 1. 🎯 Project Vision & Technical Architecture
 
 ### Data Model Relationships

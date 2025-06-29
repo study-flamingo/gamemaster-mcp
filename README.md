@@ -2,6 +2,14 @@
 
 A comprehensive (Model Context Protocol (MCP))[https://www.github.com/modelcontextprotocol] server for managing AI-assisted Dungeons & Dragons campaigns, built with **FastMCP 2.9.0+**
 
+**Gamemaster MCP 🐉** aims to be the ultimate AI-assisted Dungeon Master for DnD 5e, providing:
+
+- **For Groups**: A comprehensive toolkit to help the user run campaigns more effectively
+- **For Solo Players**: A complete virtual DnD experience that facilitates immersive solo play
+- **For Worldbuilders**: Powerful tools to assist in creating rich, interconnected game worlds
+
+Built on FastMCP, the server provides structured data models and intelligent tools to manage all aspects of a D&D campaign while enabling natural language interaction through MCP clients.
+
 **🚧 Under construction 🚧**
 
 ## ✨ Features
@@ -193,13 +201,17 @@ uv venv
 # Install dependencies
 uv sync
 
+or
+
+uv pip install -r requirements.txt
+
 # Install to system with uv
 uv pip install --system -e .
 
-# Or, run directly
+# Or, run directly as a script
 ```
 
-To run directly after installed:
+To run directly after local install:
 
 ```bash
 uv run gamemaster-mcp  # From root dir
