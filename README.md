@@ -1,6 +1,6 @@
-# D&D MCP Server - FastMCP 2.8.0+ Compliant
+# Gamemaster MCP 🐉
 
-A comprehensive Model Context Protocol (MCP) server for managing Dungeons & Dragons campaigns, built with **FastMCP 2.8.0+** for modern compatibility and enhanced performance.
+A comprehensive (Model Context Protocol (MCP))[https://www.github.com/modelcontextprotocol] server for managing AI-assisted Dungeons & Dragons campaigns, built with **FastMCP 2.9.0+**
 
 ## ✨ Features
 
@@ -89,7 +89,7 @@ fastmcp install src/gamemaster_mcp/main.py:mcp -n "D&D Campaign Manager"
 
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://www.github.com/study-flamingo/gamemaster-mcp.git
 cd gamemaster-mcp
 
 # Create virtual environment
@@ -98,8 +98,11 @@ uv venv
 # Install dependencies
 uv sync
 
-# Install with uv
+# Install to user/system with uv
 uv pip install -e .
+
+# Or, run directly
+uv run --directory path/to/local/install/src/main.py
 ```
 
 ## 🏁 Usage
@@ -107,11 +110,18 @@ uv pip install -e .
 ### Running with FastMCP CLI (Recommended)
 
 ```bash
-# Development mode with inspector
-fastmcp dev src/gamemaster_mcp/main.py:mcp
+# Run as a python package
+uv run gamemaster-mcp
 
-# Run demo to test functionality
-python demo.py
+# Alternatively:
+uv run --directory path/to/local/install/src/main.py
+
+# Or, if installed to user/system packages:
+uv run gamemaster-mcp
+
+or 
+
+python -m gamemaster_mcp
 ```
 
 ### Traditional Python

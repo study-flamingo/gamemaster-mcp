@@ -2,7 +2,7 @@
 - [Table of Contents](#table-of-contents)
 - [D\&D MCP Server - Development Guide (FastMCP 2.9.0+)](#dd-mcp-server---development-guide-fastmcp-290)
   - [📁 Project Structure](#-project-structure)
-  - [🚀 FastMCP 2.8.0+ Architecture](#-fastmcp-280-architecture)
+  - [🚀 FastMCP 2.9.0+ Architecture](#-fastmcp-290-architecture)
     - [**Major Changes from Raw MCP SDK**](#major-changes-from-raw-mcp-sdk)
       - [**1. Import Statement**](#1-import-statement)
       - [**2. Server Initialization**](#2-server-initialization)
@@ -84,7 +84,7 @@ dnd-mcp/
 └── README.md                   # User documentation
 ```
 
-## 🚀 FastMCP 2.8.0+ Architecture
+## 🚀 FastMCP 2.9.0+ Architecture
 
 ### **Major Changes from Raw MCP SDK**
 
