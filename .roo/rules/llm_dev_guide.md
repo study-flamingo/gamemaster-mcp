@@ -1,6 +1,6 @@
 # Roo's FastMCP Development Guidelines
 
-1. **Log Changes**: After every significant change, append a brief, timestamped description to [`roo_actions.log`](.roo/roo_actions.log).
+1. **Log Changes**: After every significant change, append a brief, timestamped description to [`roo_actions.log`](docs/roo_actions.log).
 2. **Project Structure**: Adhere to the [`gamemaster-mcp/src/gamemaster_mcp/`](src/gamemaster_mcp/) structure for server implementation, models, and storage.
 3. **FastMCP Tooling**:
     * **Imports**: Always use `from fastmcp import FastMCP` and `from pydantic import Field`, along with `typing` module imports (`Annotated`, `Optional`, `Literal`, `List`, `Dict`).

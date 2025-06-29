@@ -8,18 +8,17 @@ version = "1.0.0"
 description = "A comprehensive D&D campaign management MCP server built with FastMCP 2.8.0+"
 authors = [{name = "Joel Casimir", email = "y9agf5y5@anonaddy.me"}]
 license = "MIT"
-url = "https://github.com/study-flamingo/gamemaster-mcp"
+urls = {Homepage = "https://github.com/study-flamingo/gamemaster-mcp"}
 
-license-files = ["LICEN[CS]E*"]
+license-files = ["LICENSE.md"]
 readme = "README.md"
-roadmap = "ROADMAP.md"
-development = "DEVELOPMENT.md"
 
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=2.9.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.1.1",
+    "shortuuid>=1.0.13",
     "typing-extensions>=4.0.0",
 ]
 

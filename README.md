@@ -2,6 +2,8 @@
 
 A comprehensive (Model Context Protocol (MCP))[https://www.github.com/modelcontextprotocol] server for managing AI-assisted Dungeons & Dragons campaigns, built with **FastMCP 2.9.0+**
 
+**🚧 Under construction 🚧**
+
 ## ✨ Features
 
 ### 🌍 Campaign Management

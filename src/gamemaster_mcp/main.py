@@ -164,12 +164,12 @@ def create_character(
 
 @mcp.tool
 def get_character(
-    name: Annotated[str, Field(description="Character name")]
+    name_or_id: Annotated[str, Field(description="Character name or ID")]
 ) -> str:
     """Get detailed character information."""
-    character = storage.get_character(name)
+    character = storage.get_character(name_or_id)
     if not character:
-        return f"Character '{name}' not found."
+        return f"Character '{name_or_id}' not found."
 
     char_info = f"""**{character.name}** (`{character.id}`)
 Level {character.character_class.level} {character.race.name} {character.character_class.name}
@@ -199,24 +199,129 @@ Level {character.character_class.level} {character.race.name} {character.charact
     return char_info
 
 @mcp.tool
-def update_character_hp(
-    name: Annotated[str, Field(description="Character name")],
-    current_hp: Annotated[int, Field(description="Current hit points", ge=0)],
-    max_hp: Annotated[int | None, Field(description="Maximum hit points", ge=1)] = None,
-    temp_hp: Annotated[int, Field(description="Temporary hit points", ge=0)] = 0,
+def update_character(
+    name_or_id: Annotated[str, Field(description="The name or ID of the character to update.")],
+    name: Annotated[str | None, Field(description="New character name. If you change this, you must use the character's ID to identify them.")] = None,
+    player_name: Annotated[str | None, Field(description="The name of the player in control of this character")] = None,
+    description: Annotated[str | None, Field(description="A brief description of the character's appearance and demeanor.")] = None,
+    bio: Annotated[str | None, Field(description="The character's backstory, personality, and motivations.")] = None,
+    background: Annotated[str | None, Field(description="Character background")] = None,
+    alignment: Annotated[str | None, Field(description="Character alignment")] = None,
+    hit_points_current: Annotated[int | None, Field(description="Current hit points", ge=0)] = None,
+    hit_points_max: Annotated[int | None, Field(description="Maximum hit points", ge=1)] = None,
+    temporary_hit_points: Annotated[int | None, Field(description="Temporary hit points", ge=0)] = None,
+    armor_class: Annotated[int | None, Field(description="Armor class")] = None,
+    inspiration: Annotated[bool | None, Field(description="Inspiration status")] = None,
+    notes: Annotated[str | None, Field(description="Additional notes about the character")] = None,
+    strength: Annotated[int | None, Field(description="Strength score", ge=1, le=30)] = None,
+    dexterity: Annotated[int | None, Field(description="Dexterity score", ge=1, le=30)] = None,
+    constitution: Annotated[int | None, Field(description="Constitution score", ge=1, le=30)] = None,
+    intelligence: Annotated[int | None, Field(description="Intelligence score", ge=1, le=30)] = None,
+    wisdom: Annotated[int | None, Field(description="Wisdom score", ge=1, le=30)] = None,
+    charisma: Annotated[int | None, Field(description="Charisma score", ge=1, le=30)] = None,
 ) -> str:
-    """Update character hit points."""
-    storage.update_character(
-        name,
-        hit_points_current=current_hp,
-        hit_points_max=max_hp or current_hp,
-        temporary_hit_points=temp_hp
-    )
-    return f"Updated {name}'s hit points to {current_hp}"
+    """Update a character's properties."""
+    character = storage.get_character(name_or_id)
+    if not character:
+        return f"❌ Character '{name_or_id}' not found."
+
+    updates = {k: v for k, v in locals().items() if v is not None and k not in ["name_or_id", "character"]}
+    updated_fields = [f"{key.replace('_', ' ')}: {value}" for key, value in updates.items()]
+
+    if not updates:
+        return f"No updates provided for {character.name}."
+
+    storage.update_character(str(character.id), **updates)
+
+    return f"Updated {character.name}'s properties: {'; '.join(updated_fields)}."
+
+@mcp.tool
+def bulk_update_characters(
+    names_or_ids: Annotated[list[str], Field(description="List of character names or IDs to update.")],
+    hp_change: Annotated[int | None, Field(description="Amount to change current HP by (positive or negative).")] = None,
+    temp_hp_change: Annotated[int | None, Field(description="Amount to change temporary HP by (positive or negative).")] = None,
+    strength_change: Annotated[int | None, Field(description="Amount to change strength by.")] = None,
+    dexterity_change: Annotated[int | None, Field(description="Amount to change dexterity by.")] = None,
+    constitution_change: Annotated[int | None, Field(description="Amount to change constitution by.")] = None,
+    intelligence_change: Annotated[int | None, Field(description="Amount to change intelligence by.")] = None,
+    wisdom_change: Annotated[int | None, Field(description="Amount to change wisdom by.")] = None,
+    charisma_change: Annotated[int | None, Field(description="Amount to change charisma by.")] = None,
+) -> str:
+    """Update properties for multiple characters at once by a given amount."""
+    updates_log = []
+    not_found_log = []
+
+    changes = {
+        "hp_change": hp_change,
+        "temp_hp_change": temp_hp_change,
+        "strength_change": strength_change,
+        "dexterity_change": dexterity_change,
+        "constitution_change": constitution_change,
+        "intelligence_change": intelligence_change,
+        "wisdom_change": wisdom_change,
+        "charisma_change": charisma_change,
+    }
+
+    # Filter out None changes
+    active_changes = {k: v for k, v in changes.items() if v is not None}
+    if not active_changes:
+        return "No changes specified."
+
+    for name_or_id in names_or_ids:
+        character = storage.get_character(name_or_id)
+        if not character:
+            not_found_log.append(name_or_id)
+            continue
+
+        char_updates = {}
+        char_log = [f"{character.name}:"]
+
+        if hp_change is not None:
+            new_hp = character.hit_points_current + hp_change
+            # Clamp HP between 0 and max HP
+            new_hp = max(0, min(new_hp, character.hit_points_max))
+            char_updates['hit_points_current'] = new_hp
+            char_log.append(f"HP -> {new_hp}")
+
+        if temp_hp_change is not None:
+            new_temp_hp = character.temporary_hit_points + temp_hp_change
+            # Temp HP cannot be negative
+            new_temp_hp = max(0, new_temp_hp)
+            char_updates['temporary_hit_points'] = new_temp_hp
+            char_log.append(f"Temp HP -> {new_temp_hp}")
+
+        abilities_updated = False
+        ability_changes = {
+            "strength": strength_change, "dexterity": dexterity_change,
+            "constitution": constitution_change, "intelligence": intelligence_change,
+            "wisdom": wisdom_change, "charisma": charisma_change
+        }
+        for ability, change in ability_changes.items():
+            if change is not None:
+                new_score = character.abilities[ability].score + change
+                new_score = max(1, min(new_score, 30)) # Clamp score
+                character.abilities[ability].score = new_score
+                abilities_updated = True
+                char_log.append(f"{ability.capitalize()} -> {new_score}")
+
+        if abilities_updated:
+            char_updates['abilities'] = character.abilities
+
+        if char_updates:
+            storage.update_character(str(character.id), **char_updates)
+            updates_log.append(" ".join(char_log))
+
+    response_parts = []
+    if updates_log:
+        response_parts.append("Characters updated:\n" + "\n".join(updates_log))
+    if not_found_log:
+        response_parts.append(f"Characters not found: {', '.join(not_found_log)}")
+
+    return "\n".join(response_parts) if response_parts else "No characters found to update."
 
 @mcp.tool
 def add_item_to_character(
-    character_name: Annotated[str, Field(description="Character name")],
+    character_name_or_id: Annotated[str, Field(description="Name or ID of the character to receive the item.")],
     item_name: Annotated[str, Field(description="Item name")],
     description: Annotated[str | None, Field(description="Item description")] = None,
     quantity: Annotated[int, Field(description="Quantity", ge=1)] = 1,
@@ -225,9 +330,9 @@ def add_item_to_character(
     value: Annotated[str | None, Field(description="Item value (e.g., '50 gp')")] = None,
 ) -> str:
     """Add an item to a character's inventory."""
-    character = storage.get_character(character_name)
+    character = storage.get_character(character_name_or_id)
     if not character:
-        return f"Character '{character_name}' not found."
+        return f"Character '{character_name_or_id}' not found."
 
     item = Item(
         name=item_name,
@@ -239,7 +344,7 @@ def add_item_to_character(
     )
 
     character.inventory.append(item)
-    storage.update_character(character_name, inventory=character.inventory)
+    storage.update_character(str(character.id), inventory=character.inventory)
 
     return f"Added {item.quantity}x {item.name} to {character.name}'s inventory"
 
