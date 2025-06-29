@@ -2,6 +2,7 @@
 Data models for the D&D MCP Server.
 """
 
+from pathlib import Path
 from datetime import datetime
 from enum import Enum
 from typing import Any, Annotated
@@ -207,7 +208,7 @@ class Campaign(BaseModel):
     name: str
     description: str
     dm_name: str | None = None
-    setting: str | None = None
+    setting: str | Path | None = None
     characters: dict[str, Character] = Field(default_factory=dict)
     npcs: dict[str, NPC] = Field(default_factory=dict)
     locations: dict[str, Location] = Field(default_factory=dict)

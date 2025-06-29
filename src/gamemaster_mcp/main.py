@@ -6,8 +6,10 @@ A comprehensive D&D campaign management server built with modern FastMCP framewo
 import logging
 import random
 import re
+import os
+from pathlib import Path
 from typing import Annotated, Literal
-
+from dotenv import load_dotenv
 from fastmcp import FastMCP
 from pydantic import Field
 
@@ -23,8 +25,15 @@ logging.basicConfig(
     level=logging.DEBUG,
     )
 
+if not load_dotenv():
+    logger.warning(".env file invalid or not found! Please see README.md for instructions. Using project root instead.")
+
+data_path = Path(os.getenv("GAMEMASTER_STORAGE_DIR", "")).resolve()
+logger.debug(f"Data path: {data_path}")
+
+
 # Initialize storage and FastMCP server
-storage = DnDStorage()
+storage = DnDStorage(data_dir=data_path)
 mcp = FastMCP(
     name="gamemaster-mcp"
 )
@@ -35,7 +44,7 @@ def create_campaign(
     name: Annotated[str, Field(description="Campaign name")],
     description: Annotated[str, Field(description="Campaign description")],
     dm_name: Annotated[str | None, Field(description="Dungeon Master name")] = None,
-    setting: Annotated[str | None, Field(description="Campaign setting")] = None,
+    setting: Annotated[str | Path | None, Field(description="Campaign setting - a full description of the setting of the campaign in markdown format, or the path to a file containing the same.")] = None,
 ) -> str:
     """Create a new D&D campaign."""
     campaign = storage.create_campaign(

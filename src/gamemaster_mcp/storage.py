@@ -6,10 +6,8 @@ Handles persistence of campaign data to JSON files.
 import logging
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
-from dotenv import load_dotenv
 
 from .models import (
     Campaign, Character, NPC, Location, Quest, CombatEncounter,
@@ -18,16 +16,11 @@ from .models import (
 
 logger = logging.getLogger("gamemaster-mcp")
 
-if not load_dotenv():
-    logger.warning(".env file not found! Please see the README.md for instructions. Using project root instead.")
-
-data_path = Path(os.getenv("GAMEMASTER_STORAGE_DIR", "./")).resolve()
-logger.info(f"Data path: {data_path}")
 
 class DnDStorage:
     """Handles storage and retrieval of D&D campaign data."""
 
-    def __init__(self, data_dir: str = "dnd_data"):
+    def __init__(self, data_dir: str | Path = "dnd_data"):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(exist_ok=True)
 
@@ -110,7 +103,7 @@ class DnDStorage:
             print(f"Error loading events: {e}")
 
     # Campaign Management
-    def create_campaign(self, name: str, description: str, dm_name: str | None = None, setting: str | None = None) -> Campaign:
+    def create_campaign(self, name: str, description: str, dm_name: str | None = None, setting: str | Path | None = None) -> Campaign:
         """Create a new campaign."""
         game_state = GameState(campaign_name=name)
 

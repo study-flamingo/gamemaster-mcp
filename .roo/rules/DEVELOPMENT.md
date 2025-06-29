@@ -1,6 +1,7 @@
 # Table of Contents
 - [Table of Contents](#table-of-contents)
 - [D\&D MCP Server - Development Guide (FastMCP 2.9.0+)](#dd-mcp-server---development-guide-fastmcp-290)
+  - [CORE PROJECT RULES](#core-project-rules)
   - [📁 Project Structure](#-project-structure)
   - [🚀 FastMCP 2.9.0+ Architecture](#-fastmcp-290-architecture)
     - [**Major Changes from Raw MCP SDK**](#major-changes-from-raw-mcp-sdk)
@@ -40,7 +41,7 @@
     - [**`EventType`**](#eventtype)
     - [**`AdventureEvent`**](#adventureevent)
   - [🎯 Development Workflows](#-development-workflows)
-    - [**Adding a New Tool with FastMCP 2.8.0+**](#adding-a-new-tool-with-fastmcp-280)
+    - [**Adding a New Tool with FastMCP 2.9.0+**](#adding-a-new-tool-with-fastmcp-290)
     - [**Extending Data Models**](#extending-data-models)
     - [**Testing with FastMCP CLI**](#testing-with-fastmcp-cli)
   - [🧪 Testing \& Validation](#-testing--validation)
@@ -64,6 +65,10 @@
 
 # D&D MCP Server - Development Guide (FastMCP 2.9.0+)
 
+## CORE PROJECT RULES
+
+1. After EVERY change or significant development decision, append [roo_actions.log](.roo/roo_actions.log) with a very brief, concise, timestamped description of the change(s) made.
+
 ## 📁 Project Structure
 
 ```text
@@ -72,7 +77,7 @@ dnd-mcp/
 │   ├── gamemaster_mcp/           # Renamed for FastMCP compliance
 │   │   ├── __init__.py          # Package initialization
 │   │   ├── __main__.py          # Module entry point
-│   │   ├── main.py              # FastMCP 2.8.0+ server implementation
+│   │   ├── main.py              # FastMCP 2.9.0+ server implementation
 │   │   ├── models.py            # Pydantic data models
 │   │   └── storage.py           # Data persistence layer
 │   └── main.py                  # CLI entry point
@@ -91,11 +96,6 @@ dnd-mcp/
 #### **1. Import Statement**
 
 ```python
-# Old (Raw MCP SDK)
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-
-# New (FastMCP 2.8.0+)
 from fastmcp import FastMCP
 ```
 
@@ -121,7 +121,7 @@ def create_campaign(
 ```
 
 #### **4. Type Annotations & Validation**
-FastMCP 2.8.0+ automatically generates schemas from type hints.
+FastMCP 2.9.0+ automatically generates schemas from type hints.
 
 ```python
 @mcp.tool
@@ -242,8 +242,8 @@ The `DnDStorage` class, defined in [`src/gamemaster_mcp/storage.py`](src/gamemas
 #### **Data Flow and Architecture**
 
 The storage system is designed around two primary data concepts:
-1.  **Campaigns**: A single, comprehensive `Campaign` object holds the majority of the game data, including characters, NPCs, locations, quests, and the overall game state. Each campaign is stored in its own JSON file. The system keeps one campaign active in memory at a time (`_current_campaign`).
-2.  **Adventure Events**: A global log of `AdventureEvent` objects, stored in a separate `adventure_log.json` file. This log is independent of any single campaign and tracks events across all gameplay.
+1. **Campaigns**: A single, comprehensive `Campaign` object holds the majority of the game data, including characters, NPCs, locations, quests, and the overall game state. Each campaign is stored in its own JSON file. The system keeps one campaign active in memory at a time (`_current_campaign`).
+2. **Adventure Events**: A global log of `AdventureEvent` objects, stored in a separate `adventure_log.json` file. This log is independent of any single campaign and tracks events across all gameplay.
 
 ```mermaid
 graph TD
@@ -271,55 +271,55 @@ graph TD
 
 #### **Properties**
 
--   **`data_dir: Path`**: The root directory where all campaign data is stored. Defaults to `dnd_data`.
--   **`_current_campaign: Campaign | None`**: An in-memory Pydantic `Campaign` object representing the currently loaded campaign. All operations on characters, quests, etc., are performed on this object before being saved.
--   **`_events: list[AdventureEvent]`**: An in-memory list of all `AdventureEvent` objects loaded from the adventure log.
+- **`data_dir: Path`**: The root directory where all campaign data is stored. Defaults to `dnd_data`.
+- **`_current_campaign: Campaign | None`**: An in-memory Pydantic `Campaign` object representing the currently loaded campaign. All operations on characters, quests, etc., are performed on this object before being saved.
+- **`_events: list[AdventureEvent]`**: An in-memory list of all `AdventureEvent` objects loaded from the adventure log.
 
 #### **Private Methods (Internal Logic)**
 
 These methods handle the direct file I/O operations.
 
--   **`_get_campaign_file(campaign_name: str | None) -> Path`**: Constructs the full file path for a given campaign name, sanitizing the name to make it safe for file systems.
--   **`_get_events_file() -> Path`**: Returns the static file path for the adventure log.
--   **`_save_campaign()`**: Serializes the `_current_campaign` object to its corresponding JSON file. This is called automatically by any public method that modifies the campaign state.
--   **`_load_current_campaign()`**: On initialization, this method finds the most recently modified campaign file in the `campaigns` directory and loads it into memory as the `_current_campaign`.
--   **`_save_events()`**: Serializes the `_events` list to the `adventure_log.json` file.
--   **`_load_events()`**: On initialization, loads all events from `adventure_log.json` into the `_events` list.
+- **`_get_campaign_file(campaign_name: str | None) -> Path`**: Constructs the full file path for a given campaign name, sanitizing the name to make it safe for file systems.
+- **`_get_events_file() -> Path`**: Returns the static file path for the adventure log.
+- **`_save_campaign()`**: Serializes the `_current_campaign` object to its corresponding JSON file. This is called automatically by any public method that modifies the campaign state.
+- **`_load_current_campaign()`**: On initialization, this method finds the most recently modified campaign file in the `campaigns` directory and loads it into memory as the `_current_campaign`.
+- **`_save_events()`**: Serializes the `_events` list to the `adventure_log.json` file.
+- **`_load_events()`**: On initialization, loads all events from `adventure_log.json` into the `_events` list.
 
 #### **Public Methods (Tool-Facing API)**
 
 These methods provide a clean, high-level interface for the MCP server tools to interact with the data.
 
 ##### **Campaign Management**
--   **`create_campaign(...) -> Campaign`**: Creates a new `Campaign` object, sets it as the `_current_campaign`, and saves it to a new JSON file.
--   **`get_current_campaign() -> Campaign | None`**: Returns the currently loaded campaign object.
--   **`list_campaigns() -> list[str]`**: Returns a list of names of all available campaigns by scanning the `campaigns` directory.
--   **`load_campaign(name: str) -> Campaign`**: Loads a specific campaign from its JSON file into `_current_campaign`.
--   **`update_campaign(**kwargs)`**: Modifies attributes of the `_current_campaign` object and saves the changes.
+- **`create_campaign(...) -> Campaign`**: Creates a new `Campaign` object, sets it as the `_current_campaign`, and saves it to a new JSON file.
+- **`get_current_campaign() -> Campaign | None`**: Returns the currently loaded campaign object.
+- **`list_campaigns() -> list[str]`**: Returns a list of names of all available campaigns by scanning the `campaigns` directory.
+- **`load_campaign(name: str) -> Campaign`**: Loads a specific campaign from its JSON file into `_current_campaign`.
+- **`update_campaign(**kwargs)`**: Modifies attributes of the `_current_campaign` object and saves the changes.
 
 ##### **Character Management**
--   **`add_character(character: Character)`**: Adds a `Character` to the current campaign's character dictionary.
--   **`get_character(name: str) -> Character | None`**: Retrieves a single character by name from the current campaign.
--   **`update_character(name: str, **kwargs)`**: Updates attributes of a specific character in the current campaign.
--   **`remove_character(name: str)`**: Deletes a character from the current campaign.
--   **`list_characters() -> list[str]`**: Lists the names of all characters in the current campaign.
+- **`add_character(character: Character)`**: Adds a `Character` to the current campaign's character dictionary.
+- **`get_character(name: str) -> Character | None`**: Retrieves a single character by name from the current campaign.
+- **`update_character(name: str, **kwargs)`**: Updates attributes of a specific character in the current campaign.
+- **`remove_character(name: str)`**: Deletes a character from the current campaign.
+- **`list_characters() -> list[str]`**: Lists the names of all characters in the current campaign.
 
 ##### **NPC, Location, and Quest Management**
 These methods follow the same CRUD (Create, Read, Update, Delete) pattern as Character Management:
--   **`add_npc(npc: NPC)`**, **`get_npc(name: str)`**, **`list_npcs()`**
--   **`add_location(location: Location)`**, **`get_location(name: str)`**, **`list_locations()`**
--   **`add_quest(quest: Quest)`**, **`get_quest(title: str)`**, **`update_quest_status(...)`**, **`list_quests(...)`**
+- **`add_npc(npc: NPC)`**, **`get_npc(name: str)`**, **`list_npcs()`**
+- **`add_location(location: Location)`**, **`get_location(name: str)`**, **`list_locations()`**
+- **`add_quest(quest: Quest)`**, **`get_quest(title: str)`**, **`update_quest_status(...)`**, **`list_quests(...)`**
 
 ##### **Game State & Session Management**
--   **`update_game_state(**kwargs)`**: Modifies attributes of the `GameState` object within the current campaign.
--   **`get_game_state() -> GameState | None`**: Retrieves the `GameState` object from the current campaign.
--   **`add_session_note(session_note: SessionNote)`**: Appends a `SessionNote` to the current campaign's session list.
--   **`get_sessions() -> list[SessionNote]`**: Returns all session notes for the current campaign.
+- **`update_game_state(**kwargs)`**: Modifies attributes of the `GameState` object within the current campaign.
+- **`get_game_state() -> GameState | None`**: Retrieves the `GameState` object from the current campaign.
+- **`add_session_note(session_note: SessionNote)`**: Appends a `SessionNote` to the current campaign's session list.
+- **`get_sessions() -> list[SessionNote]`**: Returns all session notes for the current campaign.
 
 ##### **Adventure Log / Event Management**
--   **`add_event(event: AdventureEvent)`**: Adds a new event to the `_events` list and saves the adventure log.
--   **`get_events(...) -> list[AdventureEvent]`**: Retrieves events, with optional filtering by type and a limit on the number of results.
--   **`search_events(query: str) -> list[AdventureEvent]`**: Searches event titles and descriptions for a given query string.
+- **`add_event(event: AdventureEvent)`**: Adds a new event to the `_events` list and saves the adventure log.
+- **`get_events(...) -> list[AdventureEvent]`**: Retrieves events, with optional filtering by type and a limit on the number of results.
+- **`search_events(query: str) -> list[AdventureEvent]`**: Searches event titles and descriptions for a given query string.
 
 ## 📖 Data Models Guide
 This section provides a detailed overview of the Pydantic data models used in the D&D MCP Server, defined in `src/gamemaster_mcp/models.py`. These models are the backbone of the data persistence and validation layer.
@@ -485,7 +485,7 @@ Represents a single, taggable event in the adventure log, allowing for a more gr
 
 ## 🎯 Development Workflows
 
-### **Adding a New Tool with FastMCP 2.8.0+**
+### **Adding a New Tool with FastMCP 2.9.0+**
 1. **Define Tool with Type Annotations**:
 
 ```python
@@ -493,7 +493,7 @@ Represents a single, taggable event in the adventure log, allowing for a more gr
 def new_spell_tool(
     spell_name: Annotated[str, Field(description="Name of the spell")],
     spell_level: Annotated[int, Field(description="Spell level", ge=0, le=9)],
-    school: Annotated[Literal["evocation", "enchantment", "necromancy"], Field(description="School of magic")],
+    school: Annotated[str, Field(description="School of magic")],
     character_name: Annotated[Optional[str], Field(description="Character to add spell to")] = None,
 ) -> str:
     """Add a spell to the campaign or character spellbook."""
@@ -615,7 +615,7 @@ def validate_example(
 #### **Import Issues**
 
 ```python
-# ✅ Correct FastMCP 2.8.0+ imports
+# ✅ Correct FastMCP 2.9.0+ imports
 from fastmcp import FastMCP
 from pydantic import Field
 from typing import Annotated, Optional, Literal, List, Dict
@@ -714,4 +714,4 @@ def bad_tool(name: str, level: int, notes: str = "") -> str:
 4. **Enhanced Testing** - Tools can be tested as regular functions
 5. **Modern Standards** - Compliance with latest MCP best practices
 
-This guide provides the foundation for developing with FastMCP 2.8.0+, emphasizing the modern, type-safe, and streamlined approach to MCP server development.\
+This guide provides the foundation for developing with FastMCP 2.9.0+, emphasizing the modern, type-safe, and streamlined approach to MCP server development.\
