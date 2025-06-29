@@ -1,0 +1,9 @@
+2025-06-29 10:30:38: Created docs/STORAGE_STRUCTURE.md to document the campaign save folder structure.
+2025-06-29 10:36:30 - Created ROADMAP.md to outline high-level concepts and future feature implementation goals based on existing project documentation.
+2025-06-29 10:36:30 - Created ROADMAP.md to outline high-level concepts and future feature implementation goals based on existing project documentation.
+2025-06-29 13:36:52: Added `bulk_update_characters` tool to `src/gamemaster_mcp/main.py` to allow for simultaneous updates of multiple characters.
+2025-06-29 14:14:36 - Added debug logging to src/gamemaster_mcp/storage.py
+2025-06-29 14:18:55 - Added emojis to debug logging in src/gamemaster_mcp/storage.py
+2025-06-29 14:53:54 - Updated ROADMAP.md with new features for character attributes, worldbuilding tools, and semantic search.
+2025-06-29 15:12:29 - Revised ROADMAP.md to add Phase 3 for scalability and integration, and re-phased data intelligence to Phase 4 based on user feedback.
+2025-06-29 15:19:40 - Updated data models in `src/gamemaster_mcp/models.py` to use `shortuuid` for ID fields.

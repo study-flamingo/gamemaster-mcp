@@ -23,7 +23,7 @@ All data is automatically saved and can be shared between sessions.
 - Switch between campaigns seamlessly
 - Track campaign metadata (name, description, DM, setting)
 
-### 🧙 Character Management
+### 📑 Character Management
 
 Complete D&D 5e character sheets with:
 
@@ -41,7 +41,7 @@ Characters evolve as you play - taking damage, gaining items, and leveling up.
 - Inventory and equipment management
 - Spellcasting support
 
-### 🏰 NPC Management
+### 🧝 NPC Management
 
 Bring your world to life with rich NPCs featuring:
 
@@ -57,7 +57,7 @@ NPCs can be linked to quests and locations for easy reference.
 - Manage relationships and locations
 - Store descriptions and notes
 
-### 🌄 Location/World Building
+### 🗺️ Location/World Building
 
 Create immersive settings with:
 
@@ -73,7 +73,7 @@ Locations update as the party explores - adding discovered areas and changing co
 - Track populations, governments, and notable features
 - Connect locations and manage geography
 
-### 🏆 Quest Management
+### 💎 Quest Management
 
 Track story arcs and missions with:
 
@@ -108,7 +108,7 @@ Combat data flows to:
 - Turn-based combat flow
 - Combat encounter planning
 
-### 📅 Session Management
+### ⏰ Session Management
 
 Organize your game sessions with:
 
@@ -127,7 +127,7 @@ Session data updates:
 - Experience and treasure tracking
 - Character attendance
 
-### 📜 Adventure Log
+### 🏕️ Adventure Log
 
 Your campaign's living history:
 

@@ -64,7 +64,7 @@ def create_campaign(
         dm_name=dm_name,
         setting=setting
     )
-    return f"Created campaign '{campaign.name}'. Campaign is now active."
+    return f"🌟 Created campaign: '{campaign.name} and set as active 🌟'"
 
 @mcp.tool
 def get_campaign_info() -> str:
@@ -77,7 +77,7 @@ def get_campaign_info() -> str:
         "name": campaign.name,
         "description": campaign.description,
         "dm_name": campaign.dm_name,
-        "setting": campaign.setting,
+        "setting": campaign.get_setting(),
         "character_count": len(campaign.characters),
         "npc_count": len(campaign.npcs),
         "location_count": len(campaign.locations),
@@ -169,7 +169,7 @@ def get_character(
     """Get detailed character information."""
     character = storage.get_character(name_or_id)
     if not character:
-        return f"Character '{name_or_id}' not found."
+        return f"❌ Character '{name_or_id}' not found."
 
     char_info = f"""**{character.name}** (`{character.id}`)
 Level {character.character_class.level} {character.race.name} {character.character_class.name}
@@ -181,12 +181,12 @@ Level {character.character_class.level} {character.race.name} {character.charact
 **Bio:** {character.bio or 'No bio provided.'}
 
 **Ability Scores:**
-• STR: {character.abilities['strength'].score} ({character.abilities['strength'].modifier:+d})
-• DEX: {character.abilities['dexterity'].score} ({character.abilities['dexterity'].modifier:+d})
-• CON: {character.abilities['constitution'].score} ({character.abilities['constitution'].modifier:+d})
-• INT: {character.abilities['intelligence'].score} ({character.abilities['intelligence'].modifier:+d})
-• WIS: {character.abilities['wisdom'].score} ({character.abilities['wisdom'].modifier:+d})
-• CHA: {character.abilities['charisma'].score} ({character.abilities['charisma'].modifier:+d})
+• STR: {character.abilities['strength'].score} ({character.abilities['strength'].mod:+d})
+• DEX: {character.abilities['dexterity'].score} ({character.abilities['dexterity'].mod:+d})
+• CON: {character.abilities['constitution'].score} ({character.abilities['constitution'].mod:+d})
+• INT: {character.abilities['intelligence'].score} ({character.abilities['intelligence'].mod:+d})
+• WIS: {character.abilities['wisdom'].score} ({character.abilities['wisdom'].mod:+d})
+• CHA: {character.abilities['charisma'].score} ({character.abilities['charisma'].mod:+d})
 
 **Combat Stats:**
 • AC: {character.armor_class}
@@ -332,7 +332,7 @@ def add_item_to_character(
     """Add an item to a character's inventory."""
     character = storage.get_character(character_name_or_id)
     if not character:
-        return f"Character '{character_name_or_id}' not found."
+        return f"❌ Character '{character_name_or_id}' not found!"
 
     item = Item(
         name=item_name,

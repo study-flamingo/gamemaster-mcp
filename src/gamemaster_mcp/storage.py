@@ -65,7 +65,7 @@ class DnDStorage:
     def _save_campaign(self):
         """Save the current campaign to disk."""
         if not self._current_campaign:
-            logger.debug("🤷 No current campaign to save.")
+            logger.debug("❌ No current campaign to save.")
             return
 
         campaign_file = self._get_campaign_file()
@@ -81,13 +81,13 @@ class DnDStorage:
         logger.debug("📂 Attempting to load the most recent campaign...")
         campaigns_dir = self.data_dir / "campaigns"
         if not campaigns_dir.exists():
-            logger.debug("🤷 Campaigns directory does not exist. No campaign loaded.")
+            logger.debug("❌ Campaigns directory does not exist. No campaign loaded.")
             return
 
         # Find the most recent campaign file
         campaign_files = list(campaigns_dir.glob("*.json"))
         if not campaign_files:
-            logger.debug("🤷 No campaign files found.")
+            logger.debug("❌ No campaign files found.")
             return
 
         # Sort by modification time and load the most recent
@@ -117,7 +117,7 @@ class DnDStorage:
         logger.debug("📂 Attempting to load adventure events...")
         events_file = self._get_events_file()
         if not events_file.exists():
-            logger.debug("🤷 Adventure log file does not exist. No events loaded.")
+            logger.debug("❌ Adventure log file does not exist. No events loaded.")
             return
 
         try:
@@ -144,7 +144,7 @@ class DnDStorage:
 
         self._current_campaign = campaign
         self._save_campaign()
-        logger.info(f"✅ Campaign '{name}' created and set as current.")
+        logger.info(f"✅ Campaign '{name}' created and set as active.")
         return campaign
 
     def get_current_campaign(self) -> Campaign | None:
@@ -201,30 +201,46 @@ class DnDStorage:
         self._current_campaign.characters[character.name] = character
         self._current_campaign.updated_at = datetime.now()
         self._save_campaign()
-        logger.debug(f"✅ Character '{character.name}' added and campaign saved.")
+        logger.debug(f"✅ Character '{character.name}' added to campaign: '{self._current_campaign.name}'.")
 
     def _find_character(self, name_or_id: str) -> Character | None:
         """Find a character by name or ID."""
         if not self._current_campaign:
-            return None
+            e = ValueError("❌ No active campaign! Wtf???")
+            logger.error(e)
+            raise e
 
-        # Try searching by ID first
-        try:
-            char_id = name_or_id
-            for char in self._current_campaign.characters.values():
-                if char.id == char_id:
-                    return char
-        except (ValueError, TypeError):
-            # Not a UUID, so it's a name
-            logger.debug(f"❌ Character not found by ID: {name_or_id}, trying name")
-            pass
+        character: Character | None = None
+
+        # Try searching by ID first if appropriate
+        if len(name_or_id) == 8:
+            try:
+                char_id = name_or_id
+                for char in self._current_campaign.characters.values():
+                    if char.id == char_id:
+                        character = char
+            except (ValueError, TypeError):
+                # Not a UUID, so it's a name
+                logger.warning(f"⚠️ Character not found by ID: {name_or_id}, trying name")
+                pass
 
         # Search by name
-        return self._current_campaign.characters.get(name_or_id)
+        try:
+            character = self._current_campaign.characters.get(name_or_id)
+        except (ValueError, TypeError) as e:
+            logger.error(e)
+            return None
+
+        return character
 
     def get_character(self, name_or_id: str) -> Character | None:
         """Get a character by name or ID."""
-        return self._find_character(name_or_id)
+        char = self._find_character(name_or_id)
+        if not char:
+            logger.error(f"❌ Character '{name_or_id}' not found!")
+            return None
+        logger.debug(f"✅ Found character '{char.name}'")
+        return char
 
     def update_character(self, name_or_id: str, **kwargs) -> None:
         """Update a character's data."""
@@ -234,8 +250,9 @@ class DnDStorage:
         logger.info(f"📝 Attempting to update character '{name_or_id}' with data: {kwargs}")
         character = self._find_character(name_or_id)
         if not character:
-            logger.error(f"❌ Character '{name_or_id}' not found for update.")
-            raise ValueError(f"Character '{name_or_id}' not found")
+            e = ValueError(f"❌ Character '{name_or_id}' not found!")
+            logger.error(e)
+            raise e
 
         original_name = character.name
         new_name = kwargs.get("name")
@@ -249,7 +266,7 @@ class DnDStorage:
 
         if new_name and new_name != original_name:
             # If name changed, update the dictionary key
-            logger.debug(f"🔄 Character name changed from '{original_name}' to '{new_name}'. Updating dictionary key.")
+            logger.debug(f"🏷️ Character name changed from '{original_name}' to '{new_name}'. Updating dictionary key.")
             self._current_campaign.characters[new_name] = self._current_campaign.characters.pop(original_name)
 
         self._current_campaign.updated_at = datetime.now()
@@ -261,7 +278,7 @@ class DnDStorage:
         if not self._current_campaign:
             raise ValueError("No current campaign")
 
-        logger.info(f"🗑️ Attempting to remove character '{name_or_id}'.")
+        logger.debug(f"🗑️ Attempting to remove character '{name_or_id}'.")
         character_to_remove = self._find_character(name_or_id)
         if character_to_remove:
             char_name = character_to_remove.name
@@ -272,7 +289,7 @@ class DnDStorage:
             self._save_campaign()
             logger.info(f"✅ Character '{char_name}' removed successfully.")
         else:
-            logger.warning(f"🤷 Character '{name_or_id}' not found for removal.")
+            logger.warning(f"⚠️ Character '{name_or_id}' not found for removal.")
 
     def list_characters(self) -> list[str]:
         """List all character names in the current campaign."""

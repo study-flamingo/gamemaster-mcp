@@ -40,7 +40,7 @@ def test_character_model():
     assert character.character_class.name == "Fighter"
     assert character.character_class.level == 1
     assert character.abilities["strength"].score == 15
-    assert character.abilities["strength"].modifier == 2  # (15-10)//2 = 2
+    assert character.abilities["strength"].mod == 2  # (15-10)//2 = 2
 
 
 def test_ability_score_modifier():
@@ -59,7 +59,7 @@ def test_ability_score_modifier():
     
     for score, expected_modifier in test_cases:
         ability = AbilityScore(score=score)
-        assert ability.modifier == expected_modifier, f"Score {score} should have modifier {expected_modifier}, got {ability.modifier}"
+        assert ability.mod == expected_modifier, f"Score {score} should have modifier {expected_modifier}, got {ability.mod}"
 
 
 if __name__ == "__main__":

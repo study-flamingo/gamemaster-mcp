@@ -61,7 +61,8 @@ demo_data/
 *.json
 
 # Logs
-*.log
+log/
+logs/
 
 # Testing
 .pytest_cache/

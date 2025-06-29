@@ -6,8 +6,122 @@ from pathlib import Path
 from datetime import datetime
 from enum import Enum
 from typing import Any, Annotated
-from uuid import UUID, uuid4
+from shortuuid import random
 from pydantic import BaseModel, Field
+
+from .logutils import logger
+
+class GameStats(BaseModel):
+    """Statistics and metadata about the current campaign, and about the MCP server itself across all campaigns."""
+    tool_calls: int = 0
+    errors: int = 0
+    campaigns_created: int = 0
+    campaigns_loaded: int = 0
+    campaign_updates: int = 0
+    campaign_deletions: int = 0
+    characters_created: int = 0
+    character_updates: int = 0
+    character_deletions: int = 0
+    npcs_created: int = 0
+    npc_updates: int = 0
+    npc_deletions: int = 0
+    locations_created: int = 0
+    location_updates: int = 0
+    location_deletions: int = 0
+    quests_created: int = 0
+    quest_updates: int = 0
+    quest_deletions: int = 0
+    encounters_created: int = 0
+    encounters_completed: int = 0
+    encounter_updates: int = 0
+    encounter_deletions: int = 0
+    sessions_created: int = 0
+    session_updates: int = 0
+    session_deletions: int = 0
+    items_given: int = 0
+    items_taken: int = 0
+    item_updates: int = 0
+    item_creations: int = 0
+    item_deletions: int = 0
+    spells_created: int = 0
+    spell_updates: int = 0
+    spell_deletions: int = 0
+    spells_cast: int = 0
+    die_rolls: int = 0
+    roll_successes: int = 0
+    roll_failures: int = 0
+    damage_dealt: int = 0
+    damage_taken: int = 0
+    death_saves_success: int = 0
+    death_saves_failure: int = 0
+    ingame_days: int = 0
+
+
+    def __init__(self):
+        self.ctime: datetime = datetime.now()
+        self.last_tool_call: datetime | None = None
+
+    def _save_stats(self) -> None:
+        # TODO: Implement me
+        return None
+
+    def inc(self, field: str, inc: int = 1) -> None:
+        """Increment a counter.
+
+        Args:
+            field (str): The name of the counter to increment. Can be one of:
+
+            inc (int): The amount to increment the counter by.
+
+        **Field** can be any of the following:
+            tool_calls
+            errors
+            campaigns_created
+            campaigns_loaded
+            campaign_updates
+            campaign_deletions
+            characters_created
+            character_updates
+            character_deletions
+            npcs_created
+            npc_updates
+            npc_deletions
+            locations_created
+            location_updates
+            location_deletions
+            quests_created
+            quest_updates
+            quest_deletions
+            encounters_created
+            encounters_completed
+            encounter_updates
+            encounter_deletions
+            sessions_created
+            session_updates
+            session_deletions
+            items_given
+            items_taken
+            item_updates
+            item_creations
+            item_deletions
+            spells_created
+            spell_updates
+            spell_deletions
+            spells_cast
+            die_rolls
+            roll_successes
+            roll_failures
+            damage_dealt
+            damage_taken
+            death_saves_success
+            death_saves_failure
+            ingame_days
+        """
+        try:
+            setattr(self, field, getattr(self, field) + inc)
+            self._save_stats()
+        except:
+            logger.error(f"❌ Error incrementing {field} in GameStats")
 
 
 class AbilityScore(BaseModel):
@@ -15,7 +129,7 @@ class AbilityScore(BaseModel):
     score: int = Field(ge=1, le=30, description="Raw ability score")
 
     @property
-    def modifier(self) -> int:
+    def mod(self) -> int:
         """Calculate ability modifier."""
         return (self.score - 10) // 2
 
@@ -37,6 +151,7 @@ class Race(BaseModel):
 
 class Item(BaseModel):
     """Generic item model."""
+    id: str = Field(default_factory=lambda: random(length=8))
     name: str
     description: str | None = None
     quantity: int = 1
@@ -48,6 +163,7 @@ class Item(BaseModel):
 
 class Spell(BaseModel):
     """Spell information."""
+    id: str = Field(default_factory=lambda: random(length=8))
     name: str
     level: int = Field(ge=0, le=9)
     school: str
@@ -63,7 +179,7 @@ class Spell(BaseModel):
 class Character(BaseModel):
     """Complete character sheet."""
     # Basic Info
-    id: UUID = Field(default_factory=uuid4)
+    id: str = Field(default_factory=lambda: random(length=8))
     name: str
     player_name: str | None = None
     character_class: CharacterClass
@@ -129,7 +245,7 @@ class Character(BaseModel):
 
 class NPC(BaseModel):
     """Non-player character."""
-    id: UUID = Field(default_factory=uuid4)
+    id: str = Field(default_factory=lambda: random(length=8))
     name: str
     description: str | None = None
     bio: str | None = None  # The NPC's backstory, motivations, and secrets.
@@ -144,6 +260,7 @@ class NPC(BaseModel):
 
 class Location(BaseModel):
     """Geographic location or settlement."""
+    id: str = Field(default_factory=lambda: random(length=8))
     name: str
     location_type: str  # city, town, village, dungeon, forest, etc.
     description: str
@@ -157,6 +274,7 @@ class Location(BaseModel):
 
 class Quest(BaseModel):
     """Quest or mission."""
+    id: str = Field(default_factory=lambda: random(length=8))
     title: str
     description: str
     giver: str | None = None  # NPC who gave the quest
@@ -170,6 +288,7 @@ class Quest(BaseModel):
 
 class CombatEncounter(BaseModel):
     """Combat encounter details."""
+    id: str = Field(default_factory=lambda: random(length=8))
     name: str
     description: str
     enemies: list[str] = Field(default_factory=list)
@@ -182,6 +301,7 @@ class CombatEncounter(BaseModel):
 
 class SessionNote(BaseModel):
     """Session notes and summary."""
+    id: str = Field(default_factory=lambda: random(length=8))
     session_number: int
     date: datetime = Field(default_factory=datetime.now)
     title: str | None = None
@@ -211,6 +331,7 @@ class GameState(BaseModel):
 
 class Campaign(BaseModel):
     """Main campaign container."""
+    id: str = Field(default_factory=lambda: random(length=8))
     name: str
     description: str
     dm_name: str | None = None
@@ -226,6 +347,21 @@ class Campaign(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime | None = Field(default_factory=datetime.now)
 
+    def get_setting(self) -> str:
+        """Return the setting details for the active campaign."""
+        if isinstance(self.setting, str):
+            return self.setting
+        elif isinstance(self.setting, Path):
+            setting_txt = self.setting.read_text()
+            setting_txt += f"\n\n(From file: {str(self.setting)})"
+            return setting_txt
+        elif not self.setting:
+            return "(⚠️ No setting details have been set for this campaign!)"
+        else:
+            e = TypeError(f"❌ Unknown setting type: {type(self.setting)}")
+            raise e
+
+
 
 # Event types for the adventure log
 class EventType(str, Enum):
@@ -240,6 +376,7 @@ class EventType(str, Enum):
 
 class AdventureEvent(BaseModel):
     """Individual event in the adventure log."""
+    id: str = Field(default_factory=lambda: random(length=8))
     event_type: EventType
     title: str
     description: str
