@@ -53,9 +53,10 @@
       - [**Parameter Validation Issues**](#parameter-validation-issues)
       - [**Import Issues**](#import-issues)
     - [**Development Tools**](#development-tools)
-  - [🚀 Deployment](#-deployment)
+  - [🚀 Deployment \& Execution](#-deployment--execution)
+    - [**Running for Development**](#running-for-development)
+    - [**Running as a Standalone Tool (with `uvx`)**](#running-as-a-standalone-tool-with-uvx)
     - [**Claude Desktop Integration**](#claude-desktop-integration)
-    - [**FastMCP CLI Installation**](#fastmcp-cli-installation)
   - [📝 Code Style \& Standards (Updated)](#-code-style--standards-updated)
     - [**FastMCP-Specific Conventions**](#fastmcp-specific-conventions)
     - [**Parameter Guidelines**](#parameter-guidelines)
@@ -537,21 +538,31 @@ One the inspector is running, connect to it with the provided host and port numb
 
 ### **FastMCP Development Workflow**
 
+This project uses `uv` for dependency management and execution.
+
 ```bash
-# Create a virtual environment
+# 1. Create a virtual environment
 uv venv
 
-# Install development dependencies
-uv sync --dev
+# 2. Install dependencies, including development tools.
+# This command installs the project in editable mode (`-e .`)
+# and includes the optional development dependencies (`[dev]`).
+uv pip install -e .[dev]
 
-# Run development server with inspector
-npx @mcpjam/inspector
+# 3. Run the development server
+# `uv run` executes the command within the virtual environment.
+# `gamemaster-mcp` is the script defined in pyproject.toml.
+uv run gamemaster-mcp
 
-# Type checking
-mypy src/
+# 4. Run tests
+uv run pytest
 
-# Run tests
-pytest
+# 5. Type checking
+uv run mypy src/
+
+# 6. Linting/Formatting with Ruff
+uv run ruff check .
+uv run ruff format .
 ```
 
 ### **Tool Testing**
@@ -634,43 +645,54 @@ fastmcp dev src/gamemaster_mcp/main.py:mcp --validate
 fastmcp dev src/gamemaster_mcp/main.py:mcp --debug
 ```
 
-## 🚀 Deployment
-This MCP server is designed to be installed and run locally.
+## 🚀 Deployment & Execution
 
-1. Install locally, or to user/system packages
+This MCP server is designed to be run locally. `uv` is the recommended tool for installation and execution.
+
+### **Running for Development**
+For active development, it's best to install the package in editable mode within a dedicated virtual environment.
 
 ```bash
-# In root dir:
-uv pip install -e .
+# 1. Create a virtual environment if you haven't already
+uv venv
 
-or
+# 2. Install in editable mode with development dependencies
+uv pip install -e .[dev]
 
-uv pip install --system -e .
+# 3. Run the server
+uv run gamemaster-mcp
 ```
 
-### **Claude Desktop Integration**
+### **Running as a Standalone Tool (with `uvx`)**
+You can run the server directly from the source code without a persistent installation using `uvx`. This command creates a temporary environment, installs the dependencies, and runs the server.
 
+```bash
+# From the root of the project directory:
+uvx . gamemaster-mcp
+```
+This command tells `uvx` to treat the current directory (`.`) as a package to install, along with its dependencies, into a temporary environment, and then execute the `gamemaster-mcp` script.
+
+### **Claude Desktop Integration**
+To integrate with the Claude Desktop app, you need to provide a command that can launch the server. Using `uvx` is a clean way to do this, as it handles the environment setup.
+
+Update your Claude `settings.json`:
 ```json
 {
   "mcpServers": {
     "dnd-campaign-manager": {
-      "command": "fastmcp",
-      "args": ["run", "/path/to/gamemaster_mcp/main.py:mcp"]
+      // Use uvx to run the server from its project directory
+      "command": "uvx",
+      "args": [
+        "/absolute/path/to/gamemaster-mcp/project",
+        "gamemaster-mcp"
+      ],
+      // Ensure the working directory is the project root
+      "cwd": "/absolute/path/to/gamemaster-mcp/project"
     }
   }
 }
 ```
-
-### **FastMCP CLI Installation**
-
-```bash
-# Install server for Claude Desktop
-fastmcp install src/gamemaster_mcp/main.py:mcp -n "D&D Campaign Manager"
-
-# With dependencies
-fastmcp install src/gamemaster_mcp/main.py:mcp -n "D&D Campaign Manager" \
-  --with "pydantic>=2.0.0" --with "typing-extensions>=4.0.0"
-```
+**Note:** Replace `/absolute/path/to/gamemaster-mcp/project` with the actual absolute path to this project on your machine.
 
 ## 📝 Code Style & Standards (Updated)
 

@@ -58,7 +58,7 @@ class DnDStorage:
         campaign_data = self._current_campaign.model_dump(mode='json')
 
         with open(campaign_file, 'w', encoding='utf-8') as f:
-            json.dump(campaign_data, f, indent=2, default=str)
+            json.dump(campaign_data, f, default=str)
 
     def _load_current_campaign(self):
         """Load the most recently used campaign."""
@@ -87,7 +87,7 @@ class DnDStorage:
         events_data = [event.model_dump(mode='json') for event in self._events]
 
         with open(events_file, 'w', encoding='utf-8') as f:
-            json.dump(events_data, f, indent=2, default=str)
+            json.dump(events_data, f, default=str)
 
     def _load_events(self):
         """Load adventure events from disk."""
