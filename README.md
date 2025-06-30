@@ -1,6 +1,6 @@
 # Gamemaster MCP 🐉
 
-A comprehensive (Model Context Protocol [MCP](https://www.github.com/modelcontextprotocol) server for managing AI-assisted Dungeons & Dragons campaigns, built with **FastMCP 2.9.0+**
+A comprehensive [Model Context Protocol MCP](https://www.github.com/modelcontextprotocol) server for managing AI-assisted Dungeons & Dragons campaigns, built with **FastMCP 2.9.0+**
 
 **Gamemaster MCP 🐉** aims to be the ultimate AI-assisted Dungeon Master for DnD 5e, providing:
 
