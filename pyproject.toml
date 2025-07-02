@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gamemaster-mcp"
-version = "1.0.0"
+version = "0.1.0"
 description = "A comprehensive D&D campaign management MCP server built with FastMCP 2.8.0+"
 authors = [{name = "Joel Casimir", email = "y9agf5y5@anonaddy.me"}]
 license = "MIT"

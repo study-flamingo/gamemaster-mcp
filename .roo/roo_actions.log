@@ -1,0 +1,5 @@
+
+2025-06-28 23:38:37 - Added recommended system prompt to README.md to improve LLM tool utilization.
+2025-06-28 23:40:09 - Added recommended system prompt to README.md to improve LLM tool utilization.
+2025-06-28 23:48:14 - Updated the recommended system prompt in README.md to include an interactive "Session Zero" workflow.
+2025-06-29 00:43:15 - Updated .roo/rules/DEVELOPMENT.md with modern `uv` and `uvx` installation and execution instructions.

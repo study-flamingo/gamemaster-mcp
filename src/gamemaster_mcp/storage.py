@@ -69,7 +69,8 @@ class DnDStorage:
             return
 
         campaign_file = self._get_campaign_file()
-        logger.debug(f"💾 Saving campaign '{self._current_campaign.name}' to {campaign_file}...")
+        logger.debug(f"💾 Saving campaign '{self._current_campaign.name}' to {campaign_file}")
+        logger.info(f"💾 Autosaving '{self._current_campaign.name}'")
         campaign_data = self._current_campaign.model_dump(mode='json')
 
         with open(campaign_file, 'w', encoding='utf-8') as f:

@@ -15,6 +15,8 @@ from .logutils import logger
 
 class GameStats(BaseModel):
     """Statistics and metadata about the current campaign, and about the MCP server itself across all campaigns."""
+    ctime: datetime = Field(default_factory=datetime.now)
+    last_tool_call: datetime | None = None
     tool_calls: int = 0
     errors: int = 0
     campaigns_created: int = 0
@@ -57,11 +59,6 @@ class GameStats(BaseModel):
     death_saves_success: int = 0
     death_saves_failure: int = 0
     ingame_days: int = 0
-
-
-    def __init__(self):
-        self.ctime: datetime = datetime.now()
-        self.last_tool_call: datetime | None = None
 
     def _save_stats(self) -> None:
         # TODO: Implement me

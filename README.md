@@ -185,55 +185,47 @@ The Game State connects all other models:
 
 ### Prerequisites
 
-- Python 3.10+
-- FastMCP 2.8.0+
+- Python 3.12+
+- `uv` (available in your system's PATH)
 
-### Install from GitHub with `uv`
+### User Installation
 
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/study-flamingo/gamemaster-mcp.git
+    cd gamemaster-mcp
+    ```
+
+2.  **Create a virtual environment and install dependencies:**
+    ```bash
+    uv venv
+    uv pip install .
+    ```
+
+## 🏁 Running the Server
+
+### From the Command Line
+
+To run the server directly, first activate the virtual environment:
 ```bash
-# Clone repository
-git clone https://www.github.com/study-flamingo/gamemaster-mcp.git
-cd gamemaster-mcp
+# On macOS/Linux
+source .venv/bin/activate
 
-# Create virtual environment
-uv venv
-
-# Install dependencies
-uv sync
-
-or
-
-uv pip install -r requirements.txt
-
-# Install to system with uv
-uv pip install --system -e .
-
-# Or, run directly as a script
+# On Windows
+.venv\Scripts\activate
+```
+Then, run the executable:
+```bash
+gamemaster-mcp
+```
+Alternatively, use `uv` to run the script without activating the environment:
+```bash
+uv run gamemaster-mcp
 ```
 
-To run directly after local install:
+### With an MCP Client (e.g., Claude Desktop)
 
-```bash
-uv run gamemaster-mcp  # From root dir
-uv run --directory path/to/local/install/src/main.py  # From elsewhere
-```
-
-## 🏁 Usage
-
-Use this MCP server with any desktop MCP-compatible client, such as:
-- [Claude Desktop/Code](https://claude.ai/download)
-- [Cursor](https://www.cursor.com/en/downloads)
-- [HyperChat](https://github.com/BigSweetPotatoStudio/HyperChat)
-- [5ire](https://github.com/nanbingxyz/5ire)
-- [Cherry Studio](https://github.com/CherryHQ/cherry-studio)
-
-Or, browse [Awesome MCP Clients list by punkpeye](https://github.com/punkpeye/awesome-mcp-clients) for suggestions.
-
-### Example: Claude Desktop Configuration
-
-Add to your Claude Desktop MCP configuration .json file.
-
-Run with uv:
+Configure your MCP client to use `uv` to run the server. You only need to provide the path to your project folder as the working directory.
 
 ```json
 {
@@ -241,59 +233,15 @@ Run with uv:
     "gamemaster-mcp": {
       "command": "uv",
       "args": [
-        "--directory",
-        "path/to/your/local/gamemaster-mcp"
         "run",
         "gamemaster-mcp"
-      ]
+      ],
+      "cwd": "C:\\path\\to\\your\\gamemaster-mcp"
     }
   }
 }
 ```
-
-You can also install gamemaster-mcp locally and run it as a Python module:
-
-```bash
-uv pip install --user -e .  # Install as editable package
-```
-
-Then, add to your Claude Desktop MCP configuration:
-
-```json
-{
-  "mcpServers": {
-    "gamemaster-mcp": {
-      "command": "python",
-      "args": [
-        "-m",
-        "gamemaster_mcp"
-      ]
-    }
-  }
-}
-```
-
-### Running directly with uv
-
-After package is installed locally:
-
-```bash
-# Run as a python package
-uv run -m gamemaster_mcp
-
-# Alternatively:
-uv run --directory path/to/local/install/src/main.py
-```
-
-### Running directly with Python
-
-```bash
-# Run server directly
-python -m gamemaster_mcp
-
-# Or using the main script
-python src/main.py
-```
+*Note: Replace `C:\\path\\to\\your\\gamemaster-mcp` with the absolute path to the project directory.*
 
 ## 🎛️ System Prompt Recommendation
 
@@ -368,7 +316,8 @@ Once the campaign is underway, your focus shifts to dynamic management and narra
 
 - `create_character` - Create a new player character
 - `get_character` - Get character sheet details
-- `update_character_hp` - Update character hit points
+- `update_character` - Update a character's properties (name, stats, HP, etc.).
+- `bulk_update_characters` - Update multiple characters at once (e.g., apply damage to all).
 - `add_item_to_character` - Add items to inventory
 - `list_characters` - List all characters
 
@@ -462,17 +411,23 @@ Here's how the core data models in `src/gamemaster_mcp/models.py` interact:
 
 ## 🖥️ Development
 
-### FastMCP Development Workflow
+### Development Workflow
 
+If you want to contribute to the project, the setup is slightly different.
+
+1.  **Follow steps from the User Installation** to clone the repo and set up the virtual environment.
+
+2.  **Install in editable mode with development dependencies:**
+    ```bash
+    uv pip install -e .[dev]
+    ```
+    This installs the project in a way that your code changes are immediately reflected without needing to reinstall. It also installs tools for testing and linting.
+
+### Running Tests
+
+To run the test suite, use the following command:
 ```bash
-# Install development dependencies
-uv sync --dev
-
-# Run with [improved MCP inspector](https://www.github.com/mcpjam/inspector)
-npx @mcpjam/inspector
-
-# Run tests
-pytest
+uv run pytest
 ```
 
 ## 📜 License

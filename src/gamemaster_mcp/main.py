@@ -737,7 +737,7 @@ def add_event(
     )
 
     storage.add_event(event)
-    return f"Added {event.event_type} event: '{event.title}'"
+    return f"Added {event_type.lower} event: '{event.title}'"
 
 @mcp.tool
 def get_events(
