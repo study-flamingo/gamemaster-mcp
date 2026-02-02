@@ -18,6 +18,7 @@ from .models import (
     Character, NPC, Location, Quest, SessionNote, AdventureEvent, EventType,
     AbilityScore, CharacterClass, Race, Item
 )
+from .toon_encoder import encode_to_toon
 
 logger = logging.getLogger("gamemaster-mcp")
 
@@ -67,8 +68,14 @@ def create_campaign(
     return f"🌟 Created campaign: '{campaign.name} and set as active 🌟'"
 
 @mcp.tool
-def get_campaign_info() -> str:
-    """Get information about the current campaign."""
+def get_campaign_info(
+    format: Annotated[Literal["json", "toon"], Field(description="Output format: 'json' (default) or 'toon' for compact representation")] = "json"
+) -> str:
+    """Get information about the current campaign.
+
+    Returns campaign information including name, description, counts of various entities,
+    and current game state. Supports TOON format for more compact output (~30% token reduction).
+    """
     campaign = storage.get_current_campaign()
     if not campaign:
         return "No active campaign."
@@ -88,6 +95,9 @@ def get_campaign_info() -> str:
         "party_level": campaign.game_state.party_level,
         "in_combat": campaign.game_state.in_combat
     }
+
+    if format == "toon":
+        return encode_to_toon(info)
 
     return f"**Campaign: {campaign.name}**\n\n" + \
            "\n".join([f"**{k.replace('_', ' ').title()}:** {v}" for k, v in info.items()])
@@ -164,9 +174,9 @@ def create_character(
 
 @mcp.tool
 def get_character(
-    name_or_id: Annotated[str, Field(description="Character name or ID")]
+    name_or_id: Annotated[str, Field(description="Character name, ID, or player name")]
 ) -> str:
-    """Get detailed character information."""
+    """Get detailed character information. Accepts character name, ID, or player name."""
     character = storage.get_character(name_or_id)
     if not character:
         return f"❌ Character '{name_or_id}' not found."
@@ -200,7 +210,7 @@ Level {character.character_class.level} {character.race.name} {character.charact
 
 @mcp.tool
 def update_character(
-    name_or_id: Annotated[str, Field(description="The name or ID of the character to update.")],
+    name_or_id: Annotated[str, Field(description="Character name, ID, or player name.")],
     name: Annotated[str | None, Field(description="New character name. If you change this, you must use the character's ID to identify them.")] = None,
     player_name: Annotated[str | None, Field(description="The name of the player in control of this character")] = None,
     description: Annotated[str | None, Field(description="A brief description of the character's appearance and demeanor.")] = None,
@@ -237,7 +247,7 @@ def update_character(
 
 @mcp.tool
 def bulk_update_characters(
-    names_or_ids: Annotated[list[str], Field(description="List of character names or IDs to update.")],
+    names_or_ids: Annotated[list[str], Field(description="List of character names, IDs, or player names to update.")],
     hp_change: Annotated[int | None, Field(description="Amount to change current HP by (positive or negative).")] = None,
     temp_hp_change: Annotated[int | None, Field(description="Amount to change temporary HP by (positive or negative).")] = None,
     strength_change: Annotated[int | None, Field(description="Amount to change strength by.")] = None,
@@ -267,49 +277,52 @@ def bulk_update_characters(
     if not active_changes:
         return "No changes specified."
 
-    for name_or_id in names_or_ids:
-        character = storage.get_character(name_or_id)
-        if not character:
-            not_found_log.append(name_or_id)
-            continue
+    # Use batch mode for single save at the end instead of N saves
+    with storage.batch_update():
+        for name_or_id in names_or_ids:
+            character = storage.get_character(name_or_id)
+            if not character:
+                not_found_log.append(name_or_id)
+                continue
 
-        char_updates = {}
-        char_log = [f"{character.name}:"]
+            char_updates = {}
+            char_log = [f"{character.name}:"]
 
-        if hp_change is not None:
-            new_hp = character.hit_points_current + hp_change
-            # Clamp HP between 0 and max HP
-            new_hp = max(0, min(new_hp, character.hit_points_max))
-            char_updates['hit_points_current'] = new_hp
-            char_log.append(f"HP -> {new_hp}")
+            if hp_change is not None:
+                new_hp = character.hit_points_current + hp_change
+                # Clamp HP between 0 and max HP
+                new_hp = max(0, min(new_hp, character.hit_points_max))
+                char_updates['hit_points_current'] = new_hp
+                char_log.append(f"HP -> {new_hp}")
 
-        if temp_hp_change is not None:
-            new_temp_hp = character.temporary_hit_points + temp_hp_change
-            # Temp HP cannot be negative
-            new_temp_hp = max(0, new_temp_hp)
-            char_updates['temporary_hit_points'] = new_temp_hp
-            char_log.append(f"Temp HP -> {new_temp_hp}")
+            if temp_hp_change is not None:
+                new_temp_hp = character.temporary_hit_points + temp_hp_change
+                # Temp HP cannot be negative
+                new_temp_hp = max(0, new_temp_hp)
+                char_updates['temporary_hit_points'] = new_temp_hp
+                char_log.append(f"Temp HP -> {new_temp_hp}")
 
-        abilities_updated = False
-        ability_changes = {
-            "strength": strength_change, "dexterity": dexterity_change,
-            "constitution": constitution_change, "intelligence": intelligence_change,
-            "wisdom": wisdom_change, "charisma": charisma_change
-        }
-        for ability, change in ability_changes.items():
-            if change is not None:
-                new_score = character.abilities[ability].score + change
-                new_score = max(1, min(new_score, 30)) # Clamp score
-                character.abilities[ability].score = new_score
-                abilities_updated = True
-                char_log.append(f"{ability.capitalize()} -> {new_score}")
+            abilities_updated = False
+            ability_changes = {
+                "strength": strength_change, "dexterity": dexterity_change,
+                "constitution": constitution_change, "intelligence": intelligence_change,
+                "wisdom": wisdom_change, "charisma": charisma_change
+            }
+            for ability, change in ability_changes.items():
+                if change is not None:
+                    new_score = character.abilities[ability].score + change
+                    new_score = max(1, min(new_score, 30)) # Clamp score
+                    character.abilities[ability].score = new_score
+                    abilities_updated = True
+                    char_log.append(f"{ability.capitalize()} -> {new_score}")
 
-        if abilities_updated:
-            char_updates['abilities'] = character.abilities
+            if abilities_updated:
+                char_updates['abilities'] = character.abilities
 
-        if char_updates:
-            storage.update_character(str(character.id), **char_updates)
-            updates_log.append(" ".join(char_log))
+            if char_updates:
+                storage.update_character(str(character.id), **char_updates)
+                updates_log.append(" ".join(char_log))
+    # Single save happens here when exiting batch_update context
 
     response_parts = []
     if updates_log:
@@ -321,7 +334,7 @@ def bulk_update_characters(
 
 @mcp.tool
 def add_item_to_character(
-    character_name_or_id: Annotated[str, Field(description="Name or ID of the character to receive the item.")],
+    character_name_or_id: Annotated[str, Field(description="Character name, ID, or player name.")],
     item_name: Annotated[str, Field(description="Item name")],
     description: Annotated[str | None, Field(description="Item description")] = None,
     quantity: Annotated[int, Field(description="Quantity", ge=1)] = 1,
@@ -349,19 +362,42 @@ def add_item_to_character(
     return f"Added {item.quantity}x {item.name} to {character.name}'s inventory"
 
 @mcp.tool
-def list_characters() -> str:
-    """List all characters in the current campaign."""
-    characters = storage.list_characters()
+def list_characters(
+    format: Annotated[Literal["json", "toon"], Field(description="Output format: 'json' (default) or 'toon' for compact representation")] = "json"
+) -> str:
+    """List all characters in the current campaign.
+
+    Returns a list of all player characters with their basic information.
+    Supports TOON format for more compact output (~30% token reduction).
+    """
+    characters = storage.list_characters_detailed()  # O(n) instead of O(2n)
     if not characters:
         return "No characters in the current campaign."
 
-    char_list = []
-    for char_name in characters:
-        char = storage.get_character(char_name)
-        if char:
-            char_list.append(f"• {char.name} (Level {char.character_class.level} {char.race.name} {char.character_class.name})")
+    if format == "toon":
+        # Convert Character objects to dictionaries for TOON encoding
+        char_data = [char.model_dump() for char in characters]
+        return encode_to_toon(char_data)
+
+    char_list = [
+        f"• {char.name} (Level {char.character_class.level} {char.race.name} {char.character_class.name})"
+        for char in characters
+    ]
 
     return "**Characters:**\n" + "\n".join(char_list)
+
+@mcp.tool
+def delete_character(
+    name_or_id: Annotated[str, Field(description="Character name, ID, or player name.")]
+) -> str:
+    """Delete a character from the current campaign. Accepts character name, ID, or player name."""
+    character = storage.get_character(name_or_id)
+    if not character:
+        return f"❌ Character '{name_or_id}' not found."
+
+    char_name = character.name
+    storage.remove_character(name_or_id)
+    return f"🗑️ Character '{char_name}' has been deleted from the campaign."
 
 # NPC Management Tools
 @mcp.tool
@@ -414,18 +450,27 @@ def get_npc(
     return npc_info
 
 @mcp.tool
-def list_npcs() -> str:
-    """List all NPCs in the current campaign."""
-    npcs = storage.list_npcs()
+def list_npcs(
+    format: Annotated[Literal["json", "toon"], Field(description="Output format: 'json' (default) or 'toon' for compact representation")] = "json"
+) -> str:
+    """List all NPCs in the current campaign.
+
+    Returns a list of all non-player characters with their basic information.
+    Supports TOON format for more compact output (~30% token reduction).
+    """
+    npcs = storage.list_npcs_detailed()  # O(n) instead of O(2n)
     if not npcs:
         return "No NPCs in the current campaign."
 
-    npc_list = []
-    for npc_name in npcs:
-        npc = storage.get_npc(npc_name)
-        if npc:
-            location = f" ({npc.location})" if npc.location else ""
-            npc_list.append(f"• {npc.name}{location}")
+    if format == "toon":
+        # Convert NPC objects to dictionaries for TOON encoding
+        npc_data = [npc.model_dump() for npc in npcs]
+        return encode_to_toon(npc_data)
+
+    npc_list = [
+        f"• {npc.name}{f' ({npc.location})' if npc.location else ''}"
+        for npc in npcs
+    ]
 
     return "**NPCs:**\n" + "\n".join(npc_list)
 
@@ -479,17 +524,27 @@ def get_location(
     return loc_info
 
 @mcp.tool
-def list_locations() -> str:
-    """List all locations in the current campaign."""
-    locations = storage.list_locations()
+def list_locations(
+    format: Annotated[Literal["json", "toon"], Field(description="Output format: 'json' (default) or 'toon' for compact representation")] = "json"
+) -> str:
+    """List all locations in the current campaign.
+
+    Returns a list of all locations with their basic information.
+    Supports TOON format for more compact output (~30% token reduction).
+    """
+    locations = storage.list_locations_detailed()  # O(n) instead of O(2n)
     if not locations:
         return "No locations in the current campaign."
 
-    loc_list = []
-    for loc_name in locations:
-        loc = storage.get_location(loc_name)
-        if loc:
-            loc_list.append(f"• {loc.name} ({loc.location_type})")
+    if format == "toon":
+        # Convert Location objects to dictionaries for TOON encoding
+        loc_data = [loc.model_dump() for loc in locations]
+        return encode_to_toon(loc_data)
+
+    loc_list = [
+        f"• {loc.name} ({loc.location_type})"
+        for loc in locations
+    ]
 
     return "**Locations:**\n" + "\n".join(loc_list)
 
@@ -540,13 +595,27 @@ def update_quest(
 @mcp.tool
 def list_quests(
     status: Annotated[Literal["active", "completed", "failed", "on_hold"] | None, Field(description="Filter by status")] = None,
+    format: Annotated[Literal["json", "toon"], Field(description="Output format: 'json' (default) or 'toon' for compact representation")] = "json"
 ) -> str:
-    """List quests, optionally filtered by status."""
+    """List quests, optionally filtered by status.
+
+    Returns a list of quests with their basic information and status.
+    Supports TOON format for more compact output (~30% token reduction).
+    """
     quests = storage.list_quests(status)
 
     if not quests:
         filter_text = f" with status '{status}'" if status else ""
         return f"No quests found{filter_text}."
+
+    if format == "toon":
+        # Get full quest objects for TOON encoding
+        quest_objects = []
+        for quest_title in quests:
+            quest = storage.get_quest(quest_title)
+            if quest:
+                quest_objects.append(quest.model_dump())
+        return encode_to_toon(quest_objects)
 
     quest_list = []
     for quest_title in quests:
@@ -676,6 +745,9 @@ def add_session_note(
     title: Annotated[str | None, Field(description="Session title")] = None,
     events: Annotated[list[str] | None, Field(description="Key events that occurred")] = None,
     characters_present: Annotated[list[str] | None, Field(description="Characters present in session")] = None,
+    npcs_encountered: Annotated[list[str] | None, Field(description="NPCs encountered in session")] = None,
+    quest_updates: Annotated[dict[str, str] | None, Field(description="Quest name to progress mapping")] = None,
+    combat_encounters: Annotated[list[str] | None, Field(description="Combat encounter summaries")] = None,
     experience_gained: Annotated[int | None, Field(description="Experience points gained", ge=0)] = None,
     treasure_found: Annotated[list[str] | None, Field(description="Treasure or items found")] = None,
     notes: Annotated[str, Field(description="Additional notes")] = "",
@@ -687,6 +759,9 @@ def add_session_note(
         summary=summary,
         events=events or [],
         characters_present=characters_present or [],
+        npcs_encountered=npcs_encountered or [],
+        quest_updates=quest_updates or {},
+        combat_encounters=combat_encounters or [],
         experience_gained=experience_gained,
         treasure_found=treasure_found or [],
         notes=notes
@@ -694,6 +769,314 @@ def add_session_note(
 
     storage.add_session_note(session_note)
     return f"Added session note for Session {session_note.session_number}"
+
+def _summarize_session_impl(
+    transcription: str,
+    session_number: int,
+    detail_level: Literal["brief", "medium", "detailed"] = "medium",
+    speaker_map: dict[str, str] | None = None
+) -> str:
+    """Implementation of summarize_session tool (separated for testing).
+
+    Args:
+        transcription: Raw text or file path containing session transcription
+        session_number: Session number for this recording
+        detail_level: Amount of detail in the generated summary
+        speaker_map: Optional mapping of generic speaker labels to character names
+
+    Returns:
+        Formatted prompt for LLM processing
+    """
+    # Step 1: Detect if transcription is file path or raw text
+    transcription_text = transcription
+    source_type = "raw text"
+
+    # Only check for file if input is reasonable path length (< 1000 chars)
+    # and doesn't contain newlines (which wouldn't be in a valid path)
+    if len(transcription) < 1000 and '\n' not in transcription:
+        transcription_path = Path(transcription.strip())
+        try:
+            if transcription_path.exists() and transcription_path.is_file():
+                transcription_text = transcription_path.read_text(encoding='utf-8')
+                source_type = f"file: {transcription_path.name}"
+                logger.info(f"Loaded transcription from file: {transcription_path}")
+        except (OSError, Exception) as e:
+            # Path validation failed or read failed - treat as raw text
+            logger.debug(f"Not a valid file path: {e}. Treating input as raw text.")
+            transcription_text = transcription
+            source_type = "raw text"
+
+    # Step 2: Apply speaker mapping if provided
+    if speaker_map:
+        logger.info(f"Applying speaker mapping: {speaker_map}")
+        for speaker_label, character_name in speaker_map.items():
+            # Replace speaker labels case-insensitively
+            import re
+            pattern = re.compile(re.escape(speaker_label), re.IGNORECASE)
+            transcription_text = pattern.sub(character_name, transcription_text)
+
+    # Step 3: Load campaign context
+    logger.info("Loading campaign context for enrichment")
+
+    characters = storage.list_characters_detailed()
+    npcs = storage.list_npcs_detailed()
+    locations = storage.list_locations_detailed()
+    quests = storage.list_quests()
+
+    # Create compact context using TOON format
+    context = {
+        "characters": [{"name": c.name, "class": c.character_class.name, "level": c.character_class.level} for c in characters],
+        "npcs": [{"name": n.name, "location": n.location, "attitude": n.attitude} for n in npcs],
+        "locations": [{"name": l.name, "type": l.location_type} for l in locations],
+        "quests": []
+    }
+
+    # Get quest details
+    for quest_title in quests:
+        quest = storage.get_quest(quest_title)
+        if quest:
+            context["quests"].append({
+                "title": quest.title,
+                "status": quest.status,
+                "objectives": quest.objectives
+            })
+
+    context_encoded = encode_to_toon(context)
+
+    # Step 4: Handle large transcriptions with chunking
+    CHUNK_SIZE = 40000  # ~10k tokens per chunk
+    OVERLAP_SIZE = 4000  # ~1k token overlap
+    LARGE_THRESHOLD = 200000  # ~50k tokens
+
+    if len(transcription_text) > LARGE_THRESHOLD:
+        logger.info(f"Large transcription detected ({len(transcription_text)} chars). Using chunking strategy.")
+        chunks = _create_overlapping_chunks(transcription_text, CHUNK_SIZE, OVERLAP_SIZE)
+        logger.info(f"Created {len(chunks)} overlapping chunks")
+
+        # Return instructions for processing chunks
+        prompt = _generate_chunked_summary_prompt(
+            chunks=chunks,
+            context=context_encoded,
+            session_number=session_number,
+            detail_level=detail_level,
+            source_type=source_type
+        )
+    else:
+        # Single-pass processing
+        prompt = _generate_summary_prompt(
+            transcription=transcription_text,
+            context=context_encoded,
+            session_number=session_number,
+            detail_level=detail_level,
+            source_type=source_type
+        )
+
+    # Return the prompt for the MCP client to process with an LLM
+    return prompt
+
+
+@mcp.tool
+def summarize_session(
+    transcription: Annotated[str, Field(description="Raw transcription text or path to transcription file")],
+    session_number: Annotated[int, Field(description="Session number", ge=1)],
+    detail_level: Annotated[Literal["brief", "medium", "detailed"], Field(description="Detail level for the summary")] = "medium",
+    speaker_map: Annotated[dict[str, str] | None, Field(description="Speaker label to character mapping (e.g., {'Speaker 1': 'Gandalf'})")] = None
+) -> str:
+    """Generate structured SessionNote from a raw session transcription.
+
+    This tool accepts either raw transcription text or a path to a transcription file,
+    then generates a comprehensive structured summary including events, NPCs encountered,
+    quest updates, and combat encounters. The tool leverages campaign context (characters,
+    NPCs, locations, quests) to enrich the summary.
+
+    For large transcriptions (>200k characters ≈ 50k tokens), the tool automatically
+    chunks the input into overlapping segments for processing.
+
+    Args:
+        transcription: Raw text or file path containing session transcription
+        session_number: Session number for this recording
+        detail_level: Amount of detail in the generated summary
+        speaker_map: Optional mapping of generic speaker labels to character names
+
+    Returns:
+        Prompt for LLM to generate SessionNote
+    """
+    return _summarize_session_impl(transcription, session_number, detail_level, speaker_map)
+
+
+def _create_overlapping_chunks(text: str, chunk_size: int, overlap_size: int) -> list[str]:
+    """Split text into overlapping chunks for large transcription processing.
+
+    Args:
+        text: Full transcription text
+        chunk_size: Size of each chunk in characters
+        overlap_size: Size of overlap between chunks
+
+    Returns:
+        List of text chunks with overlaps
+    """
+    chunks = []
+    start = 0
+    text_length = len(text)
+
+    while start < text_length:
+        end = min(start + chunk_size, text_length)
+
+        # Try to find a natural break point (paragraph or sentence) only if not at the end
+        if end < text_length:
+            # Look for paragraph break within last 500 chars
+            search_start = max(start, end - 500)
+            last_para = text.rfind('\n\n', search_start, end)
+            if last_para > start:
+                end = last_para
+            else:
+                # Look for sentence break within last 200 chars
+                search_start = max(start, end - 200)
+                last_period = max(
+                    text.rfind('. ', search_start, end),
+                    text.rfind('! ', search_start, end),
+                    text.rfind('? ', search_start, end)
+                )
+                if last_period > start:
+                    end = last_period + 2
+
+        chunks.append(text[start:end])
+
+        # If we've reached the end, break
+        if end >= text_length:
+            break
+
+        # Move start forward with overlap
+        new_start = end - overlap_size
+
+        # Ensure we're making progress (avoid infinite loop)
+        if new_start <= start:
+            new_start = start + 1
+
+        start = new_start
+
+    return chunks
+
+
+def _generate_summary_prompt(transcription: str, context: str, session_number: int, detail_level: str, source_type: str) -> str:
+    """Generate prompt for single-pass transcription summarization.
+
+    Args:
+        transcription: Full transcription text
+        context: TOON-encoded campaign context
+        session_number: Session number
+        detail_level: Detail level (brief/medium/detailed)
+        source_type: Description of transcription source
+
+    Returns:
+        Formatted prompt for LLM processing
+    """
+    detail_instructions = {
+        "brief": "Create a concise summary focusing on major plot points and decisions.",
+        "medium": "Create a balanced summary with key events, NPC interactions, and quest progress.",
+        "detailed": "Create a comprehensive summary capturing dialogue nuances, character development, and all significant interactions."
+    }
+
+    return f"""# Session Transcription Summary Request
+
+**Session Number:** {session_number}
+**Source:** {source_type}
+**Detail Level:** {detail_level}
+
+## Campaign Context
+{context}
+
+## Instructions
+{detail_instructions[detail_level]}
+
+Generate a structured SessionNote with the following fields:
+1. **title**: A catchy title for the session (max 60 chars)
+2. **summary**: A narrative summary of the session
+3. **events**: List of key events (bullet points)
+4. **characters_present**: List of PC names who participated
+5. **npcs_encountered**: List of NPC names who appeared
+6. **quest_updates**: Dictionary mapping quest titles to progress descriptions
+7. **combat_encounters**: List of combat summaries (if any)
+8. **experience_gained**: Estimated XP earned (optional)
+9. **treasure_found**: List of loot/items acquired
+10. **notes**: Additional DM notes or observations
+
+## Transcription
+{transcription}
+
+---
+
+Please analyze the transcription above and generate a SessionNote object following the structure described. Use the campaign context to identify known characters, NPCs, locations, and quests."""
+
+
+def _generate_chunked_summary_prompt(chunks: list[str], context: str, session_number: int, detail_level: str, source_type: str) -> str:
+    """Generate prompt for chunked transcription summarization.
+
+    Args:
+        chunks: List of transcription chunks
+        context: TOON-encoded campaign context
+        session_number: Session number
+        detail_level: Detail level (brief/medium/detailed)
+        source_type: Description of transcription source
+
+    Returns:
+        Formatted prompt for LLM processing with chunking instructions
+    """
+    detail_instructions = {
+        "brief": "Create a concise summary focusing on major plot points and decisions.",
+        "medium": "Create a balanced summary with key events, NPC interactions, and quest progress.",
+        "detailed": "Create a comprehensive summary capturing dialogue nuances, character development, and all significant interactions."
+    }
+
+    chunk_summaries = "\n\n".join([
+        f"### Chunk {i+1} of {len(chunks)}\n{chunk}"
+        for i, chunk in enumerate(chunks)
+    ])
+
+    return f"""# Large Session Transcription Summary Request (Chunked)
+
+**Session Number:** {session_number}
+**Source:** {source_type}
+**Detail Level:** {detail_level}
+**Chunks:** {len(chunks)} overlapping segments
+
+## Campaign Context
+{context}
+
+## Instructions
+This transcription has been split into {len(chunks)} overlapping chunks for processing.
+
+**Phase 1: Extract events from each chunk**
+- Process each chunk independently
+- Extract key events with normalized titles (e.g., "Combat with goblins" not "Combat with goblins in chunk 2")
+- Note: Events may appear in multiple chunks due to overlap
+
+**Phase 2: Merge and deduplicate**
+- Combine events from all chunks
+- Remove duplicates by comparing normalized event titles
+- Maintain chronological order
+
+**Phase 3: Generate final SessionNote**
+{detail_instructions[detail_level]}
+
+Generate a structured SessionNote with the following fields:
+1. **title**: A catchy title for the session (max 60 chars)
+2. **summary**: A narrative summary of the entire session
+3. **events**: Deduplicated list of key events from all chunks
+4. **characters_present**: List of PC names who participated
+5. **npcs_encountered**: List of NPC names who appeared
+6. **quest_updates**: Dictionary mapping quest titles to progress descriptions
+7. **combat_encounters**: List of combat summaries
+8. **experience_gained**: Estimated XP earned (optional)
+9. **treasure_found**: List of loot/items acquired
+10. **notes**: Additional DM notes or observations
+
+## Transcription Chunks
+{chunk_summaries}
+
+---
+
+Please analyze all chunks above and generate a single cohesive SessionNote object following the structure described. Use the campaign context to identify known characters, NPCs, locations, and quests. Remember to deduplicate events that appear in multiple chunks."""
 
 @mcp.tool
 def get_sessions() -> str:
