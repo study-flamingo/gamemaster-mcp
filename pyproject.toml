@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gamemaster-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "A comprehensive D&D campaign management MCP server built with FastMCP 2.8.0+"
 authors = [{name = "Joel Casimir", email = "y9agf5y5@anonaddy.me"}]
 license = "MIT"
@@ -16,8 +16,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=2.9.0",
+    "httpx>=0.24.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.1.1",
+    "pyyaml>=6.0",
     "shortuuid>=1.0.13",
     "typing-extensions>=4.0.0",
 ]
@@ -55,3 +57,13 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]

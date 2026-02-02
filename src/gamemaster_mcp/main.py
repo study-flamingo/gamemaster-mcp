@@ -18,6 +18,10 @@ from .models import (
     Character, NPC, Location, Quest, SessionNote, AdventureEvent, EventType,
     AbilityScore, CharacterClass, Race, Item
 )
+from .rulebooks import RulebookManager
+from .rulebooks.sources.srd import SRDSource
+from .rulebooks.sources.custom import CustomSource
+from .rulebooks.validators import CharacterValidator
 
 logger = logging.getLogger("gamemaster-mcp")
 
@@ -68,7 +72,11 @@ def create_campaign(
 
 @mcp.tool
 def get_campaign_info() -> str:
-    """Get information about the current campaign."""
+    """Get information about the current campaign.
+
+    Returns campaign information including name, description, counts of various entities,
+    and current game state.
+    """
     campaign = storage.get_current_campaign()
     if not campaign:
         return "No active campaign."
@@ -164,9 +172,9 @@ def create_character(
 
 @mcp.tool
 def get_character(
-    name_or_id: Annotated[str, Field(description="Character name or ID")]
+    name_or_id: Annotated[str, Field(description="Character name, ID, or player name")]
 ) -> str:
-    """Get detailed character information."""
+    """Get detailed character information. Accepts character name, ID, or player name."""
     character = storage.get_character(name_or_id)
     if not character:
         return f"❌ Character '{name_or_id}' not found."
@@ -200,7 +208,7 @@ Level {character.character_class.level} {character.race.name} {character.charact
 
 @mcp.tool
 def update_character(
-    name_or_id: Annotated[str, Field(description="The name or ID of the character to update.")],
+    name_or_id: Annotated[str, Field(description="Character name, ID, or player name.")],
     name: Annotated[str | None, Field(description="New character name. If you change this, you must use the character's ID to identify them.")] = None,
     player_name: Annotated[str | None, Field(description="The name of the player in control of this character")] = None,
     description: Annotated[str | None, Field(description="A brief description of the character's appearance and demeanor.")] = None,
@@ -237,7 +245,7 @@ def update_character(
 
 @mcp.tool
 def bulk_update_characters(
-    names_or_ids: Annotated[list[str], Field(description="List of character names or IDs to update.")],
+    names_or_ids: Annotated[list[str], Field(description="List of character names, IDs, or player names to update.")],
     hp_change: Annotated[int | None, Field(description="Amount to change current HP by (positive or negative).")] = None,
     temp_hp_change: Annotated[int | None, Field(description="Amount to change temporary HP by (positive or negative).")] = None,
     strength_change: Annotated[int | None, Field(description="Amount to change strength by.")] = None,
@@ -267,49 +275,52 @@ def bulk_update_characters(
     if not active_changes:
         return "No changes specified."
 
-    for name_or_id in names_or_ids:
-        character = storage.get_character(name_or_id)
-        if not character:
-            not_found_log.append(name_or_id)
-            continue
+    # Use batch mode for single save at the end instead of N saves
+    with storage.batch_update():
+        for name_or_id in names_or_ids:
+            character = storage.get_character(name_or_id)
+            if not character:
+                not_found_log.append(name_or_id)
+                continue
 
-        char_updates = {}
-        char_log = [f"{character.name}:"]
+            char_updates = {}
+            char_log = [f"{character.name}:"]
 
-        if hp_change is not None:
-            new_hp = character.hit_points_current + hp_change
-            # Clamp HP between 0 and max HP
-            new_hp = max(0, min(new_hp, character.hit_points_max))
-            char_updates['hit_points_current'] = new_hp
-            char_log.append(f"HP -> {new_hp}")
+            if hp_change is not None:
+                new_hp = character.hit_points_current + hp_change
+                # Clamp HP between 0 and max HP
+                new_hp = max(0, min(new_hp, character.hit_points_max))
+                char_updates['hit_points_current'] = new_hp
+                char_log.append(f"HP -> {new_hp}")
 
-        if temp_hp_change is not None:
-            new_temp_hp = character.temporary_hit_points + temp_hp_change
-            # Temp HP cannot be negative
-            new_temp_hp = max(0, new_temp_hp)
-            char_updates['temporary_hit_points'] = new_temp_hp
-            char_log.append(f"Temp HP -> {new_temp_hp}")
+            if temp_hp_change is not None:
+                new_temp_hp = character.temporary_hit_points + temp_hp_change
+                # Temp HP cannot be negative
+                new_temp_hp = max(0, new_temp_hp)
+                char_updates['temporary_hit_points'] = new_temp_hp
+                char_log.append(f"Temp HP -> {new_temp_hp}")
 
-        abilities_updated = False
-        ability_changes = {
-            "strength": strength_change, "dexterity": dexterity_change,
-            "constitution": constitution_change, "intelligence": intelligence_change,
-            "wisdom": wisdom_change, "charisma": charisma_change
-        }
-        for ability, change in ability_changes.items():
-            if change is not None:
-                new_score = character.abilities[ability].score + change
-                new_score = max(1, min(new_score, 30)) # Clamp score
-                character.abilities[ability].score = new_score
-                abilities_updated = True
-                char_log.append(f"{ability.capitalize()} -> {new_score}")
+            abilities_updated = False
+            ability_changes = {
+                "strength": strength_change, "dexterity": dexterity_change,
+                "constitution": constitution_change, "intelligence": intelligence_change,
+                "wisdom": wisdom_change, "charisma": charisma_change
+            }
+            for ability, change in ability_changes.items():
+                if change is not None:
+                    new_score = character.abilities[ability].score + change
+                    new_score = max(1, min(new_score, 30)) # Clamp score
+                    character.abilities[ability].score = new_score
+                    abilities_updated = True
+                    char_log.append(f"{ability.capitalize()} -> {new_score}")
 
-        if abilities_updated:
-            char_updates['abilities'] = character.abilities
+            if abilities_updated:
+                char_updates['abilities'] = character.abilities
 
-        if char_updates:
-            storage.update_character(str(character.id), **char_updates)
-            updates_log.append(" ".join(char_log))
+            if char_updates:
+                storage.update_character(str(character.id), **char_updates)
+                updates_log.append(" ".join(char_log))
+    # Single save happens here when exiting batch_update context
 
     response_parts = []
     if updates_log:
@@ -321,7 +332,7 @@ def bulk_update_characters(
 
 @mcp.tool
 def add_item_to_character(
-    character_name_or_id: Annotated[str, Field(description="Name or ID of the character to receive the item.")],
+    character_name_or_id: Annotated[str, Field(description="Character name, ID, or player name.")],
     item_name: Annotated[str, Field(description="Item name")],
     description: Annotated[str | None, Field(description="Item description")] = None,
     quantity: Annotated[int, Field(description="Quantity", ge=1)] = 1,
@@ -350,18 +361,33 @@ def add_item_to_character(
 
 @mcp.tool
 def list_characters() -> str:
-    """List all characters in the current campaign."""
-    characters = storage.list_characters()
+    """List all characters in the current campaign.
+
+    Returns a list of all player characters with their basic information.
+    """
+    characters = storage.list_characters_detailed()  # O(n) instead of O(2n)
     if not characters:
         return "No characters in the current campaign."
 
-    char_list = []
-    for char_name in characters:
-        char = storage.get_character(char_name)
-        if char:
-            char_list.append(f"• {char.name} (Level {char.character_class.level} {char.race.name} {char.character_class.name})")
+    char_list = [
+        f"• {char.name} (Level {char.character_class.level} {char.race.name} {char.character_class.name})"
+        for char in characters
+    ]
 
     return "**Characters:**\n" + "\n".join(char_list)
+
+@mcp.tool
+def delete_character(
+    name_or_id: Annotated[str, Field(description="Character name, ID, or player name.")]
+) -> str:
+    """Delete a character from the current campaign. Accepts character name, ID, or player name."""
+    character = storage.get_character(name_or_id)
+    if not character:
+        return f"❌ Character '{name_or_id}' not found."
+
+    char_name = character.name
+    storage.remove_character(name_or_id)
+    return f"🗑️ Character '{char_name}' has been deleted from the campaign."
 
 # NPC Management Tools
 @mcp.tool
@@ -415,17 +441,18 @@ def get_npc(
 
 @mcp.tool
 def list_npcs() -> str:
-    """List all NPCs in the current campaign."""
-    npcs = storage.list_npcs()
+    """List all NPCs in the current campaign.
+
+    Returns a list of all non-player characters with their basic information.
+    """
+    npcs = storage.list_npcs_detailed()  # O(n) instead of O(2n)
     if not npcs:
         return "No NPCs in the current campaign."
 
-    npc_list = []
-    for npc_name in npcs:
-        npc = storage.get_npc(npc_name)
-        if npc:
-            location = f" ({npc.location})" if npc.location else ""
-            npc_list.append(f"• {npc.name}{location}")
+    npc_list = [
+        f"• {npc.name}{f' ({npc.location})' if npc.location else ''}"
+        for npc in npcs
+    ]
 
     return "**NPCs:**\n" + "\n".join(npc_list)
 
@@ -480,16 +507,18 @@ def get_location(
 
 @mcp.tool
 def list_locations() -> str:
-    """List all locations in the current campaign."""
-    locations = storage.list_locations()
+    """List all locations in the current campaign.
+
+    Returns a list of all locations with their basic information.
+    """
+    locations = storage.list_locations_detailed()  # O(n) instead of O(2n)
     if not locations:
         return "No locations in the current campaign."
 
-    loc_list = []
-    for loc_name in locations:
-        loc = storage.get_location(loc_name)
-        if loc:
-            loc_list.append(f"• {loc.name} ({loc.location_type})")
+    loc_list = [
+        f"• {loc.name} ({loc.location_type})"
+        for loc in locations
+    ]
 
     return "**Locations:**\n" + "\n".join(loc_list)
 
@@ -541,7 +570,10 @@ def update_quest(
 def list_quests(
     status: Annotated[Literal["active", "completed", "failed", "on_hold"] | None, Field(description="Filter by status")] = None,
 ) -> str:
-    """List quests, optionally filtered by status."""
+    """List quests, optionally filtered by status.
+
+    Returns a list of quests with their basic information and status.
+    """
     quests = storage.list_quests(status)
 
     if not quests:
@@ -676,6 +708,9 @@ def add_session_note(
     title: Annotated[str | None, Field(description="Session title")] = None,
     events: Annotated[list[str] | None, Field(description="Key events that occurred")] = None,
     characters_present: Annotated[list[str] | None, Field(description="Characters present in session")] = None,
+    npcs_encountered: Annotated[list[str] | None, Field(description="NPCs encountered in session")] = None,
+    quest_updates: Annotated[dict[str, str] | None, Field(description="Quest name to progress mapping")] = None,
+    combat_encounters: Annotated[list[str] | None, Field(description="Combat encounter summaries")] = None,
     experience_gained: Annotated[int | None, Field(description="Experience points gained", ge=0)] = None,
     treasure_found: Annotated[list[str] | None, Field(description="Treasure or items found")] = None,
     notes: Annotated[str, Field(description="Additional notes")] = "",
@@ -687,6 +722,9 @@ def add_session_note(
         summary=summary,
         events=events or [],
         characters_present=characters_present or [],
+        npcs_encountered=npcs_encountered or [],
+        quest_updates=quest_updates or {},
+        combat_encounters=combat_encounters or [],
         experience_gained=experience_gained,
         treasure_found=treasure_found or [],
         notes=notes
@@ -694,6 +732,315 @@ def add_session_note(
 
     storage.add_session_note(session_note)
     return f"Added session note for Session {session_note.session_number}"
+
+def _summarize_session_impl(
+    transcription: str,
+    session_number: int,
+    detail_level: Literal["brief", "medium", "detailed"] = "medium",
+    speaker_map: dict[str, str] | None = None
+) -> str:
+    """Implementation of summarize_session tool (separated for testing).
+
+    Args:
+        transcription: Raw text or file path containing session transcription
+        session_number: Session number for this recording
+        detail_level: Amount of detail in the generated summary
+        speaker_map: Optional mapping of generic speaker labels to character names
+
+    Returns:
+        Formatted prompt for LLM processing
+    """
+    # Step 1: Detect if transcription is file path or raw text
+    transcription_text = transcription
+    source_type = "raw text"
+
+    # Only check for file if input is reasonable path length (< 1000 chars)
+    # and doesn't contain newlines (which wouldn't be in a valid path)
+    if len(transcription) < 1000 and '\n' not in transcription:
+        transcription_path = Path(transcription.strip())
+        try:
+            if transcription_path.exists() and transcription_path.is_file():
+                transcription_text = transcription_path.read_text(encoding='utf-8')
+                source_type = f"file: {transcription_path.name}"
+                logger.info(f"Loaded transcription from file: {transcription_path}")
+        except (OSError, Exception) as e:
+            # Path validation failed or read failed - treat as raw text
+            logger.debug(f"Not a valid file path: {e}. Treating input as raw text.")
+            transcription_text = transcription
+            source_type = "raw text"
+
+    # Step 2: Apply speaker mapping if provided
+    if speaker_map:
+        logger.info(f"Applying speaker mapping: {speaker_map}")
+        for speaker_label, character_name in speaker_map.items():
+            # Replace speaker labels case-insensitively
+            import re
+            pattern = re.compile(re.escape(speaker_label), re.IGNORECASE)
+            transcription_text = pattern.sub(character_name, transcription_text)
+
+    # Step 3: Load campaign context
+    logger.info("Loading campaign context for enrichment")
+
+    characters = storage.list_characters_detailed()
+    npcs = storage.list_npcs_detailed()
+    locations = storage.list_locations_detailed()
+    quests = storage.list_quests()
+
+    # Create compact context
+    context = {
+        "characters": [{"name": c.name, "class": c.character_class.name, "level": c.character_class.level} for c in characters],
+        "npcs": [{"name": n.name, "location": n.location, "attitude": n.attitude} for n in npcs],
+        "locations": [{"name": l.name, "type": l.location_type} for l in locations],
+        "quests": []
+    }
+
+    # Get quest details
+    for quest_title in quests:
+        quest = storage.get_quest(quest_title)
+        if quest:
+            context["quests"].append({
+                "title": quest.title,
+                "status": quest.status,
+                "objectives": quest.objectives
+            })
+
+    import json
+    context_encoded = json.dumps(context, separators=(',', ':'))
+
+    # Step 4: Handle large transcriptions with chunking
+    CHUNK_SIZE = 40000  # ~10k tokens per chunk
+    OVERLAP_SIZE = 4000  # ~1k token overlap
+    LARGE_THRESHOLD = 200000  # ~50k tokens
+
+    if len(transcription_text) > LARGE_THRESHOLD:
+        logger.info(f"Large transcription detected ({len(transcription_text)} chars). Using chunking strategy.")
+        chunks = _create_overlapping_chunks(transcription_text, CHUNK_SIZE, OVERLAP_SIZE)
+        logger.info(f"Created {len(chunks)} overlapping chunks")
+
+        # Return instructions for processing chunks
+        prompt = _generate_chunked_summary_prompt(
+            chunks=chunks,
+            context=context_encoded,
+            session_number=session_number,
+            detail_level=detail_level,
+            source_type=source_type
+        )
+    else:
+        # Single-pass processing
+        prompt = _generate_summary_prompt(
+            transcription=transcription_text,
+            context=context_encoded,
+            session_number=session_number,
+            detail_level=detail_level,
+            source_type=source_type
+        )
+
+    # Return the prompt for the MCP client to process with an LLM
+    return prompt
+
+
+@mcp.tool
+def summarize_session(
+    transcription: Annotated[str, Field(description="Raw transcription text or path to transcription file")],
+    session_number: Annotated[int, Field(description="Session number", ge=1)],
+    detail_level: Annotated[Literal["brief", "medium", "detailed"], Field(description="Detail level for the summary")] = "medium",
+    speaker_map: Annotated[dict[str, str] | None, Field(description="Speaker label to character mapping (e.g., {'Speaker 1': 'Gandalf'})")] = None
+) -> str:
+    """Generate structured SessionNote from a raw session transcription.
+
+    This tool accepts either raw transcription text or a path to a transcription file,
+    then generates a comprehensive structured summary including events, NPCs encountered,
+    quest updates, and combat encounters. The tool leverages campaign context (characters,
+    NPCs, locations, quests) to enrich the summary.
+
+    For large transcriptions (>200k characters ≈ 50k tokens), the tool automatically
+    chunks the input into overlapping segments for processing.
+
+    Args:
+        transcription: Raw text or file path containing session transcription
+        session_number: Session number for this recording
+        detail_level: Amount of detail in the generated summary
+        speaker_map: Optional mapping of generic speaker labels to character names
+
+    Returns:
+        Prompt for LLM to generate SessionNote
+    """
+    return _summarize_session_impl(transcription, session_number, detail_level, speaker_map)
+
+
+def _create_overlapping_chunks(text: str, chunk_size: int, overlap_size: int) -> list[str]:
+    """Split text into overlapping chunks for large transcription processing.
+
+    Args:
+        text: Full transcription text
+        chunk_size: Size of each chunk in characters
+        overlap_size: Size of overlap between chunks
+
+    Returns:
+        List of text chunks with overlaps
+    """
+    chunks = []
+    start = 0
+    text_length = len(text)
+
+    while start < text_length:
+        end = min(start + chunk_size, text_length)
+
+        # Try to find a natural break point (paragraph or sentence) only if not at the end
+        if end < text_length:
+            # Look for paragraph break within last 500 chars
+            search_start = max(start, end - 500)
+            last_para = text.rfind('\n\n', search_start, end)
+            if last_para > start:
+                end = last_para
+            else:
+                # Look for sentence break within last 200 chars
+                search_start = max(start, end - 200)
+                last_period = max(
+                    text.rfind('. ', search_start, end),
+                    text.rfind('! ', search_start, end),
+                    text.rfind('? ', search_start, end)
+                )
+                if last_period > start:
+                    end = last_period + 2
+
+        chunks.append(text[start:end])
+
+        # If we've reached the end, break
+        if end >= text_length:
+            break
+
+        # Move start forward with overlap
+        new_start = end - overlap_size
+
+        # Ensure we're making progress (avoid infinite loop)
+        if new_start <= start:
+            new_start = start + 1
+
+        start = new_start
+
+    return chunks
+
+
+def _generate_summary_prompt(transcription: str, context: str, session_number: int, detail_level: str, source_type: str) -> str:
+    """Generate prompt for single-pass transcription summarization.
+
+    Args:
+        transcription: Full transcription text
+        context: JSON-encoded campaign context
+        session_number: Session number
+        detail_level: Detail level (brief/medium/detailed)
+        source_type: Description of transcription source
+
+    Returns:
+        Formatted prompt for LLM processing
+    """
+    detail_instructions = {
+        "brief": "Create a concise summary focusing on major plot points and decisions.",
+        "medium": "Create a balanced summary with key events, NPC interactions, and quest progress.",
+        "detailed": "Create a comprehensive summary capturing dialogue nuances, character development, and all significant interactions."
+    }
+
+    return f"""# Session Transcription Summary Request
+
+**Session Number:** {session_number}
+**Source:** {source_type}
+**Detail Level:** {detail_level}
+
+## Campaign Context
+{context}
+
+## Instructions
+{detail_instructions[detail_level]}
+
+Generate a structured SessionNote with the following fields:
+1. **title**: A catchy title for the session (max 60 chars)
+2. **summary**: A narrative summary of the session
+3. **events**: List of key events (bullet points)
+4. **characters_present**: List of PC names who participated
+5. **npcs_encountered**: List of NPC names who appeared
+6. **quest_updates**: Dictionary mapping quest titles to progress descriptions
+7. **combat_encounters**: List of combat summaries (if any)
+8. **experience_gained**: Estimated XP earned (optional)
+9. **treasure_found**: List of loot/items acquired
+10. **notes**: Additional DM notes or observations
+
+## Transcription
+{transcription}
+
+---
+
+Please analyze the transcription above and generate a SessionNote object following the structure described. Use the campaign context to identify known characters, NPCs, locations, and quests."""
+
+
+def _generate_chunked_summary_prompt(chunks: list[str], context: str, session_number: int, detail_level: str, source_type: str) -> str:
+    """Generate prompt for chunked transcription summarization.
+
+    Args:
+        chunks: List of transcription chunks
+        context: JSON-encoded campaign context
+        session_number: Session number
+        detail_level: Detail level (brief/medium/detailed)
+        source_type: Description of transcription source
+
+    Returns:
+        Formatted prompt for LLM processing with chunking instructions
+    """
+    detail_instructions = {
+        "brief": "Create a concise summary focusing on major plot points and decisions.",
+        "medium": "Create a balanced summary with key events, NPC interactions, and quest progress.",
+        "detailed": "Create a comprehensive summary capturing dialogue nuances, character development, and all significant interactions."
+    }
+
+    chunk_summaries = "\n\n".join([
+        f"### Chunk {i+1} of {len(chunks)}\n{chunk}"
+        for i, chunk in enumerate(chunks)
+    ])
+
+    return f"""# Large Session Transcription Summary Request (Chunked)
+
+**Session Number:** {session_number}
+**Source:** {source_type}
+**Detail Level:** {detail_level}
+**Chunks:** {len(chunks)} overlapping segments
+
+## Campaign Context
+{context}
+
+## Instructions
+This transcription has been split into {len(chunks)} overlapping chunks for processing.
+
+**Phase 1: Extract events from each chunk**
+- Process each chunk independently
+- Extract key events with normalized titles (e.g., "Combat with goblins" not "Combat with goblins in chunk 2")
+- Note: Events may appear in multiple chunks due to overlap
+
+**Phase 2: Merge and deduplicate**
+- Combine events from all chunks
+- Remove duplicates by comparing normalized event titles
+- Maintain chronological order
+
+**Phase 3: Generate final SessionNote**
+{detail_instructions[detail_level]}
+
+Generate a structured SessionNote with the following fields:
+1. **title**: A catchy title for the session (max 60 chars)
+2. **summary**: A narrative summary of the entire session
+3. **events**: Deduplicated list of key events from all chunks
+4. **characters_present**: List of PC names who participated
+5. **npcs_encountered**: List of NPC names who appeared
+6. **quest_updates**: Dictionary mapping quest titles to progress descriptions
+7. **combat_encounters**: List of combat summaries
+8. **experience_gained**: Estimated XP earned (optional)
+9. **treasure_found**: List of loot/items acquired
+10. **notes**: Additional DM notes or observations
+
+## Transcription Chunks
+{chunk_summaries}
+
+---
+
+Please analyze all chunks above and generate a single cohesive SessionNote object following the structure described. Use the campaign context to identify known characters, NPCs, locations, and quests. Remember to deduplicate events that appear in multiple chunks."""
 
 @mcp.tool
 def get_sessions() -> str:
@@ -737,7 +1084,7 @@ def add_event(
     )
 
     storage.add_event(event)
-    return f"Added {event_type.lower} event: '{event.title}'"
+    return f"Added {event_type.lower()} event: '{event.title}'"
 
 @mcp.tool
 def get_events(
@@ -769,7 +1116,300 @@ def get_events(
 
     return "**Adventure Log:**\n\n" + "\n".join(event_list)
 
+# ----------------------------------------------------------------------
+# Rulebook Management Tools
+# ----------------------------------------------------------------------
+
+@mcp.tool
+async def load_rulebook(
+    source: Annotated[
+        Literal["srd", "custom"],
+        Field(description="Source type: 'srd' for official D&D 5e SRD, 'custom' for local files")
+    ],
+    version: Annotated[
+        str | None,
+        Field(description="SRD version: '2014' (default) or '2024'. Ignored for custom sources.")
+    ] = "2014",
+    path: Annotated[
+        str | None,
+        Field(description="Path to custom rulebook file (JSON). Required for custom sources.")
+    ] = None,
+) -> str:
+    """Load a rulebook into the current campaign."""
+    if not storage._current_campaign:
+        return "❌ No campaign loaded. Use `load_campaign` first."
+
+    # Initialize manager if not exists
+    if not storage.rulebook_manager:
+        from .rulebooks import RulebookManager
+        campaign_dir = storage._split_backend._get_campaign_dir(storage._current_campaign.name)
+        storage._rulebook_manager = RulebookManager(campaign_dir)
+
+    if source == "srd":
+        srd_source = SRDSource(version=version or "2014", cache_dir=storage.rulebook_cache_dir)
+        await storage.rulebook_manager.load_source(srd_source)
+        counts = srd_source.content_counts()
+        return f"✅ Loaded SRD {version} rulebook\n📚 {counts.classes} classes, {counts.races} races, {counts.spells} spells, {counts.monsters} monsters"
+
+    elif source == "custom":
+        if not path:
+            return "❌ Custom source requires 'path' parameter"
+        full_path = storage.rulebooks_dir / path if storage.rulebooks_dir else Path(path)
+        custom_source = CustomSource(full_path)
+        await storage.rulebook_manager.load_source(custom_source)
+        counts = custom_source.content_counts()
+        return f"✅ Loaded custom rulebook: {path}\n📚 {counts.classes} classes, {counts.races} races, {counts.spells} spells"
+
+    return "❌ Invalid source type. Use 'srd' or 'custom'."
+
+@mcp.tool
+def list_rulebooks() -> str:
+    """List all active rulebooks in the current campaign."""
+    if not storage._current_campaign:
+        return "❌ No campaign loaded."
+
+    if not storage.rulebook_manager or not storage.rulebook_manager.sources:
+        return "📚 No rulebooks loaded. Use `load_rulebook` to add one."
+
+    rulebooks = []
+    for source_id, source in storage.rulebook_manager.sources.items():
+        counts = source.content_counts()
+        rulebooks.append({
+            "id": source_id,
+            "type": source.source_type.value,
+            "loaded_at": source.loaded_at.isoformat() if source.loaded_at else None,
+            "content": {
+                "classes": counts.classes,
+                "races": counts.races,
+                "spells": counts.spells,
+                "monsters": counts.monsters,
+            }
+        })
+
+    # Markdown output
+    lines = ["# Active Rulebooks\n"]
+    for rb in rulebooks:
+        lines.append(f"## {rb['id']}")
+        lines.append(f"- **Type:** {rb['type']}")
+        if rb['loaded_at']:
+            lines.append(f"- **Loaded:** {rb['loaded_at']}")
+        lines.append(f"- **Content:** {rb['content']['classes']} classes, {rb['content']['races']} races, {rb['content']['spells']} spells, {rb['content']['monsters']} monsters")
+        lines.append("")
+
+    return "\n".join(lines)
+
+@mcp.tool
+def unload_rulebook(
+    source_id: Annotated[
+        str,
+        Field(description="ID of the rulebook to unload (from list_rulebooks)")
+    ],
+) -> str:
+    """Remove a rulebook from the current campaign."""
+    if not storage._current_campaign:
+        return "❌ No campaign loaded."
+
+    if not storage.rulebook_manager:
+        return "❌ No rulebooks loaded."
+
+    if storage.rulebook_manager.unload_source(source_id):
+        return f"✅ Unloaded rulebook: {source_id}"
+    else:
+        return f"❌ Rulebook not found: {source_id}"
+
+# ----------------------------------------------------------------------
+# Rulebook Query Tools
+# ----------------------------------------------------------------------
+
+@mcp.tool
+def search_rules(
+    query: Annotated[str, Field(description="Search term (name, partial match)")],
+    category: Annotated[
+        Literal["all", "class", "race", "spell", "monster", "feat", "item"] | None,
+        Field(description="Filter by category. Default: all")
+    ] = "all",
+    limit: Annotated[int, Field(description="Max results", ge=1, le=50)] = 20,
+) -> str:
+    """Search for rules content across all loaded rulebooks."""
+    if not storage.rulebook_manager:
+        return "❌ No rulebooks loaded. Use `load_rulebook` first."
+
+    categories = [category] if category and category != "all" else None
+    results = storage.rulebook_manager.search(query=query, categories=categories, limit=limit)
+
+    if not results:
+        return f"No results found for '{query}'."
+
+    lines = [f"# Search Results: '{query}'\n"]
+    for r in results:
+        lines.append(f"- **{r.name}** ({r.category}) — _{r.source}_")
+
+    return "\n".join(lines)
+
+@mcp.tool
+def get_class_info(
+    name: Annotated[str, Field(description="Class name (e.g., 'wizard', 'fighter')")],
+    level: Annotated[int | None, Field(description="Show features up to this level", ge=1, le=20)] = None,
+) -> str:
+    """Get full class definition from loaded rulebooks."""
+    if not storage.rulebook_manager:
+        return "❌ No rulebooks loaded."
+
+    class_def = storage.rulebook_manager.get_class(name.lower())
+    if not class_def:
+        return f"❌ Class '{name}' not found in loaded rulebooks."
+
+    # Markdown format
+    lines = [f"# {class_def.name}\n"]
+    lines.append(f"**Hit Die:** d{class_def.hit_die}")
+    lines.append(f"**Saving Throws:** {', '.join(class_def.saving_throws)}")
+    if class_def.spellcasting:
+        lines.append(f"**Spellcasting:** {class_def.spellcasting.spellcasting_ability}")
+    lines.append(f"\n**Subclasses:** {', '.join(class_def.subclasses) if class_def.subclasses else 'None in SRD'}")
+    lines.append(f"\n*Source: {class_def.source}*")
+
+    return "\n".join(lines)
+
+@mcp.tool
+def get_race_info(
+    name: Annotated[str, Field(description="Race name (e.g., 'elf', 'dwarf')")],
+) -> str:
+    """Get full race definition from loaded rulebooks."""
+    if not storage.rulebook_manager:
+        return "❌ No rulebooks loaded."
+
+    race_def = storage.rulebook_manager.get_race(name.lower())
+    if not race_def:
+        return f"❌ Race '{name}' not found in loaded rulebooks."
+
+    lines = [f"# {race_def.name}\n"]
+    lines.append(f"**Size:** {race_def.size.value}")
+    lines.append(f"**Speed:** {race_def.speed} ft.")
+    if race_def.ability_bonuses:
+        bonuses = ", ".join([f"{b.ability_score} +{b.bonus}" for b in race_def.ability_bonuses])
+        lines.append(f"**Ability Bonuses:** {bonuses}")
+    if race_def.traits:
+        lines.append(f"\n**Traits:**")
+        for trait in race_def.traits:
+            lines.append(f"- **{trait.name}:** {trait.desc[0] if trait.desc else 'No description'}")
+    if race_def.subraces:
+        lines.append(f"\n**Subraces:** {', '.join(race_def.subraces)}")
+    lines.append(f"\n*Source: {race_def.source}*")
+
+    return "\n".join(lines)
+
+@mcp.tool
+def get_spell_info(
+    name: Annotated[str, Field(description="Spell name (e.g., 'fireball', 'cure wounds')")],
+) -> str:
+    """Get spell details from loaded rulebooks."""
+    if not storage.rulebook_manager:
+        return "❌ No rulebooks loaded."
+
+    # Normalize name for lookup
+    spell_index = name.lower().replace(" ", "-")
+    spell = storage.rulebook_manager.get_spell(spell_index)
+    if not spell:
+        return f"❌ Spell '{name}' not found."
+
+    # D&D-style spell card format
+    components = ", ".join(spell.components)
+    if spell.material:
+        components += f" ({spell.material})"
+
+    lines = [f"# {spell.name}"]
+    lines.append(f"*{spell.level_text} {spell.school.value}*\n")
+    lines.append(f"**Casting Time:** {spell.casting_time}")
+    lines.append(f"**Range:** {spell.range}")
+    lines.append(f"**Components:** {components}")
+    lines.append(f"**Duration:** {spell.duration}")
+    if spell.concentration:
+        lines.append("**Concentration:** Yes")
+    if spell.ritual:
+        lines.append("**Ritual:** Yes")
+    lines.append(f"\n{chr(10).join(spell.desc)}")
+    if spell.higher_level:
+        lines.append(f"\n**At Higher Levels:** {chr(10).join(spell.higher_level)}")
+    lines.append(f"\n*Source: {spell.source}*")
+
+    return "\n".join(lines)
+
+@mcp.tool
+def get_monster_info(
+    name: Annotated[str, Field(description="Monster name (e.g., 'goblin', 'adult red dragon')")],
+) -> str:
+    """Get monster stat block from loaded rulebooks."""
+    if not storage.rulebook_manager:
+        return "❌ No rulebooks loaded."
+
+    monster_index = name.lower().replace(" ", "-")
+    monster = storage.rulebook_manager.get_monster(monster_index)
+    if not monster:
+        return f"❌ Monster '{name}' not found."
+
+    # D&D stat block format
+    lines = [f"# {monster.name}"]
+    lines.append(f"*{monster.size.value} {monster.type}, {monster.alignment}*\n")
+    lines.append(f"**Armor Class:** {monster.armor_class[0].value}")
+    lines.append(f"**Hit Points:** {monster.hit_points} ({monster.hit_dice})")
+    speeds = ", ".join([f"{k} {v}" for k, v in monster.speed.items()])
+    lines.append(f"**Speed:** {speeds}\n")
+
+    # Ability scores
+    lines.append("| STR | DEX | CON | INT | WIS | CHA |")
+    lines.append("|-----|-----|-----|-----|-----|-----|")
+    lines.append(f"| {monster.strength} ({monster.get_ability_modifier('strength'):+d}) | {monster.dexterity} ({monster.get_ability_modifier('dexterity'):+d}) | {monster.constitution} ({monster.get_ability_modifier('constitution'):+d}) | {monster.intelligence} ({monster.get_ability_modifier('intelligence'):+d}) | {monster.wisdom} ({monster.get_ability_modifier('wisdom'):+d}) | {monster.charisma} ({monster.get_ability_modifier('charisma'):+d}) |\n")
+
+    lines.append(f"**Challenge:** {monster.challenge_rating} ({monster.xp} XP)")
+    lines.append(f"\n*Source: {monster.source}*")
+
+    return "\n".join(lines)
+
+@mcp.tool
+def validate_character_rules(
+    name_or_id: Annotated[str, Field(description="Character name or ID to validate")],
+) -> str:
+    """Validate a character against loaded rulebooks."""
+    character = storage.get_character(name_or_id)
+    if not character:
+        return f"❌ Character '{name_or_id}' not found."
+
+    if not storage.rulebook_manager:
+        return "⚠️ No rulebooks loaded. Cannot validate without rules."
+
+    validator = CharacterValidator(storage.rulebook_manager)
+    report = validator.validate(character)
+
+    # Markdown format
+    status = "✅ Valid" if report.valid else "❌ Invalid"
+    lines = [f"# Validation Report: {character.name}"]
+    lines.append(f"**Status:** {status}\n")
+
+    if report.errors:
+        lines.append("## Errors")
+        for issue in report.errors:
+            lines.append(f"- **{issue.type}:** {issue.message}")
+            if issue.suggestion:
+                lines.append(f"  💡 {issue.suggestion}")
+
+    if report.warnings:
+        lines.append("\n## Warnings")
+        for issue in report.warnings:
+            lines.append(f"- **{issue.type}:** {issue.message}")
+            if issue.suggestion:
+                lines.append(f"  💡 {issue.suggestion}")
+
+    info_issues = [i for i in report.issues if i.severity.value == "info"]
+    if info_issues:
+        lines.append("\n## Info")
+        for issue in info_issues:
+            lines.append(f"- {issue.message}")
+
+    return "\n".join(lines)
+
+# ----------------------------------------------------------------------
 # Utility Tools
+# ----------------------------------------------------------------------
 @mcp.tool
 def roll_dice(
     dice_notation: Annotated[str, Field(description="Dice notation (e.g., '1d20', '3d6+2')")],

@@ -336,8 +336,11 @@ class SessionNote(BaseModel):
     summary: str
     events: list[str] = Field(default_factory=list)
     characters_present: list[str] = Field(default_factory=list)
+    npcs_encountered: list[str] = Field(default_factory=list)
+    quest_updates: dict[str, str] = Field(default_factory=dict)
+    combat_encounters: list[str] = Field(default_factory=list)
     experience_gained: int | None = None
-    treasure_found: list[str] = Field(default_factory=list)
+    treasure_found: list[str] = Field(default_factory=list, alias="loot_found")
     notes: str = ""
 
 

@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -195,12 +195,14 @@ wheels = [
 
 [[package]]
 name = "gamemaster-mcp"
-version = "1.0.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
+    { name = "httpx" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "shortuuid" },
     { name = "typing-extensions" },
 ]
@@ -213,19 +215,29 @@ dev = [
     { name = "ruff" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "fastmcp", specifier = ">=2.9.0" },
+    { name = "httpx", specifier = ">=0.24.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "shortuuid", specifier = ">=1.0.13" },
     { name = "typing-extensions", specifier = ">=4.0.0" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.4.1" }]
 
 [[package]]
 name = "h11"

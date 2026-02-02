@@ -1,0 +1,26 @@
+$schema: gamemaster-mcp/rulebook-v1
+name: House Rules
+version: "1.0"
+content:
+  spells:
+    - name: Eldritch Blast Variant
+      level: 0
+      school: Evocation
+      casting_time: 1 action
+      range: "120 feet"
+      duration: Instantaneous
+      components: ["V", "S"]
+      classes: ["warlock"]
+      desc:
+        - "A beam of crackling energy streaks toward a creature within range."
+        - "Make a ranged spell attack. On hit, deal 1d12 force damage."
+
+  feats:
+    - name: Spellblade
+      desc:
+        - "You have trained to blend martial prowess with arcane power."
+        - "When you take the Attack action, you can cast a cantrip as a bonus action."
+      prerequisites:
+        - type: ability_score
+          ability_score: INT
+          minimum_score: 13

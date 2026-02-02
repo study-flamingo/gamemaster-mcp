@@ -1,6 +1,7 @@
 dev.bat
 dev.sh
 demo.py
+GUIDA_DM.md
 
 # Python
 __pycache__/
@@ -56,6 +57,7 @@ ehthumbs.db
 Thumbs.db
 
 # D&D MCP Server data
+data/
 dnd_data/
 demo_data/
 *.json
