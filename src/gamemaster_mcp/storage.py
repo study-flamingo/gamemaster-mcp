@@ -220,6 +220,7 @@ class DnDStorage:
                 for char in self._current_campaign.characters.values():
                     if char.id == char_id:
                         character = char
+                        return char #if we find it once, we don't need to find it with name later
             except (ValueError, TypeError):
                 # Not a UUID, so it's a name
                 logger.warning(f"⚠️ Character not found by ID: {name_or_id}, trying name")
